@@ -5,6 +5,9 @@ clean:
 
 force:	clean	all
 
+archive:	force
+	rm -f *.res *.bin *.grc *.o MemoCalc
+
 bin.res:	MemoCalc.rcp
 	rm -f *.res *.bin
 	pilrc MemoCalc.rcp

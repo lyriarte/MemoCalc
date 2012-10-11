@@ -1,4 +1,4 @@
-COPYRIGHT : (C) 2003 Luc Yriarte
+COPYRIGHT : (C) 2004 Luc Yriarte
 
 MemoCalc is free software. As such, it comes with NO WARRANTY OF ANY KIND. You are free to use and redistribute this software and the source code as long as this license is included.
 

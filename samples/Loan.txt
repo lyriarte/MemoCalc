@@ -1,0 +1,7 @@
+Loan monthly payments
+<--vars-->
+rate=0.065
+years=15
+amount=100000
+<--expr-->
+amount * (rate* (1+rate)^years) / ((1+rate)^years-1) / 12
