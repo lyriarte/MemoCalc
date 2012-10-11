@@ -1,3 +1,3 @@
-MemoCalc v0
+MemoCalc v0.1
 
-- Lexer and Parser functional. No evaluation nor expression tree building.
+- Lexer and Parser functional. Evaluation with +-*/ operators only

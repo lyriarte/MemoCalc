@@ -14,16 +14,29 @@
 
 #include <malloc.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
+typedef union { double d; double fd; } FlpCompDouble;
+#define UInt32 unsigned int
 #define UInt16 unsigned short
 #define UInt8 unsigned char
 #define Char char
 
+#define nullChr 0
+
 #define MemPtrNew malloc
+#define MemPtrFree free
+#define MemSet memset
+#define FlpBufferAToF(f, a) *(f) = atof(a)
+#define StrNCompare strncmp
+#define StrCopy strcpy
+#define StrLen strlen
 
 #else
 
 #include <PalmOS.h>
+#include <FloatMgr.h>
 
 #endif
 
@@ -43,25 +56,13 @@
 #define qInteger		2		// parsed an integer
 #define qFloat			3		// parsed a float
 #define qName			4		// parsed a name
-#define qOpen			5		// parsed an open parenthesis
-#define qClose			6		// parsed a close parenthesis
-#define qOperator		7		// parsed an operator
+#define qOpen			5		// read an open parenthesis
+#define qClose			6		// read a close parenthesis
+#define qOperator		7		// read an operator
 #define qInvalidState	0xff
 
 #define dataState(q)		(q >= qInteger && q <= qName)
 #define tokenState(q)		(q >= qOpen && q <= qOperator)
-
-// transitions
-
-#define isNumber(c)		(c >= '0' && c <= '9')
-#define isLetter(c)		((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
-#define isDot(c)		(c == '.')
-#define isOpen(c)		(c == '(')
-#define isClose(c)		(c == ')')
-#define isOperator(c)	(c == '+' || c == '-' || c == '*' || c == '/' || c == '^')
-
-#define isSeparator(c)	(c == ' ' || c == '\t' || c == '\n' || c == 0x0d || c == 0x0a)
-
 
 /***********************************************************************
  *
@@ -167,7 +168,7 @@ static UInt8 GetNextState (UInt8 q, Char c)
  * DESCRIPTION: Generate a tokenList from an expression string
  *
  * PARAMETERS:  Pointer to a TokenList structure. The expression string
- *		must be set, and the token list empty
+ *		must be set. If the list is non empty, tokens are appened
  *
  * RETURNED:	0 (qStop) if no error occurred
  *
@@ -224,8 +225,8 @@ UInt8 TokenizeExpression (TokenList * tokL)
 				break;
 			}
 			// match string value in exprStr
-			exprP->iStart = iStart;
-			exprP->iEnd = iEnd;
+			exprP->data.indexPair.iStart = iStart;
+			exprP->data.indexPair.iEnd = iEnd;
 		}
 
 		// add a new token for nextState if it is not a dataState
@@ -242,7 +243,7 @@ UInt8 TokenizeExpression (TokenList * tokL)
 			// set the the matched char as token
 			exprP->token = tokL->exprStr[iNext];
 			// match token in exprStr
-			exprP->iStart = exprP->iEnd = iNext;
+			exprP->data.indexPair.iStart = exprP->data.indexPair.iEnd = iNext;
 		}
 
 		// shift state
@@ -256,3 +257,160 @@ UInt8 TokenizeExpression (TokenList * tokL)
 	tokL->cellP = tokL->headP;
 	return lastState;
 }
+
+
+/***********************************************************************
+ *
+ * FUNCTION:    ParseVariables 
+ *
+ * DESCRIPTION: Generate a varList from a vars declaration string. The
+ *		variables declaration automata is simple enough there's no need
+ *		for a transition function. The corresponding regexp is :
+ *		[A-Za-z]+\s*\=\s*\-?\s+[0-9]+\.?[0-9]*
+ *
+ * PARAMETERS:  Pointer to a VarList structure. The vars string
+ *		must be set, and the list empty.
+ *
+ * NOTE: The vars string is modified by this function! A null char is
+ *		set at the end of each var name, and the varCell->name pointer
+ *		directly refers to it.
+ *
+ * RETURNED:	0 if no error occurred
+ *
+ ***********************************************************************/
+
+UInt8 ParseVariables (VarList * varL)
+{
+	FlpCompDouble tmpF;
+	VarCell * varP, * lastP;
+	UInt16 iStart, iNext, iEnd;
+	Char tmpC;
+
+	if (! varL->varsStr)
+		return 0;
+
+	iStart = iNext = iEnd = 0;
+	varP = lastP = varL->headP;
+
+	while (varL->varsStr[iNext])
+	{
+		while(isSeparator(varL->varsStr[iNext]))
+			++iNext;
+
+		// error or end of buffer
+		if (!isLetter(varL->varsStr[iNext]))
+			break;
+
+		// add a new varCell
+		varP = MemPtrNew(sizeof(VarCell));
+		varP->nextP = NULL;
+		if (!lastP)
+			lastP = varL->headP = varP;
+		else 
+			lastP->nextP = varP;
+		// shift list
+		lastP = varP;
+
+		// read a new variable 
+		iStart = iNext;
+		while (isLetter(varL->varsStr[iNext]))
+			iNext++;
+		iEnd = iNext;
+		while(isSeparator(varL->varsStr[iNext]))
+			++iNext;
+
+		// check '=' for affectation
+		if (varL->varsStr[iNext] != '=')
+			break;
+		++iNext;
+		while(isSeparator(varL->varsStr[iNext]))
+			++iNext;
+
+		// replace '=' or first whitespace after varname by a null char and set pointer
+		varL->varsStr[iEnd] = nullChr;
+		varP->name = varL->varsStr + iStart;
+
+		// read variable value
+		iStart = iNext;
+		if (varL->varsStr[iNext] == '-')
+			++iNext;
+		if (!isNumber(varL->varsStr[iNext]))
+			break;
+		while (isNumber(varL->varsStr[iNext]))
+			iNext++;
+		if (isDot(varL->varsStr[iNext]))
+		{
+			iNext++;
+			while (isNumber(varL->varsStr[iNext]))
+				iNext++;
+		}
+		iEnd = iNext;
+
+		// set a temporary null char to read the number string
+		tmpC = varL->varsStr[iEnd];
+		varL->varsStr[iEnd] = nullChr;
+		FlpBufferAToF(&(tmpF.fd), varL->varsStr + iStart);
+		varP->value = tmpF.d;
+		varL->varsStr[iEnd] = tmpC;
+	}
+	
+	// reset current cell and return end of buffer
+	varL->cellP = varL->headP;
+	return (UInt8) varL->varsStr[iNext];
+}
+
+
+/***********************************************************************
+ *
+ * FUNCTION:    AssignTokenValue 
+ *
+ * DESCRIPTION: Assign a value for numeric tokens, or names corresponding
+ *		to a variable. If a name doesn't exist in var list, it is assumed
+ *		to be a function name.
+ *
+ * PARAMETERS:  token list, variables list.
+ *
+ * RETURNED:	0
+ *
+ ***********************************************************************/
+
+UInt8 AssignTokenValue (TokenList * tokL, VarList * varL)
+{
+	Char tmpC;
+	FlpCompDouble tmpF;
+
+	tokL->cellP = tokL->headP;
+	while (tokL->cellP)
+	{
+		switch (tokL->cellP->token)
+		{
+			case tInteger:
+			case tFloat:
+				tmpC = tokL->exprStr[tokL->cellP->data.indexPair.iEnd+1];
+				tokL->exprStr[tokL->cellP->data.indexPair.iEnd+1] = 0;
+				FlpBufferAToF(&(tmpF.fd), tokL->exprStr + tokL->cellP->data.indexPair.iStart);
+				tokL->exprStr[tokL->cellP->data.indexPair.iEnd+1] = tmpC;
+				tokL->cellP->data.value = tmpF.d;
+			break;
+
+			case tName:
+				varL->cellP = varL->headP;
+				while (varL->cellP)
+				{
+					if (StrNCompare(varL->cellP->name, tokL->exprStr + tokL->cellP->data.indexPair.iStart,
+						1 + tokL->cellP->data.indexPair.iEnd - tokL->cellP->data.indexPair.iStart) == 0)
+					{
+						tokL->cellP->data.value = varL->cellP->value;
+						break;
+					}
+					varL->cellP = varL->cellP->nextP;
+				}
+			break;
+		}
+		tokL->cellP = tokL->cellP->nextP;
+	}
+
+	tokL->cellP = tokL->headP;
+	return 0;
+}
+

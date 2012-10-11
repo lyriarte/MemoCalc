@@ -13,9 +13,6 @@
 #ifndef MEMOCALCPARSER_H
 #define MEMOCALCPARSER_H
 
-// tokens
-
-#define parseError	0xff
-#define parseOk		0
+UInt8 Eval (Char * exprStr, Char * varsStr, double * resultP);
 
 #endif // MEMOCALCPARSER_H

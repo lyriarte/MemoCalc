@@ -12,9 +12,13 @@
 
 #define TRACE_OUTPUT TRACE_OUTPUT_ON
 
-#include "MemoCalc.h"
 #include <PalmOS.h>
+#include <FloatMgr.h>
 #include <TraceMgr.h>
+
+#include "MemoCalc.h"
+#include "MemoCalcLexer.h"
+#include "MemoCalcParser.h"
 
 
 /***********************************************************************
@@ -27,6 +31,13 @@
 #define memoDBType					'DATA'
 #define memoCalcDefaultCategoryName	"MemoCalc"
 
+#define kFlpBufSize					64
+#define kErrorStr					"Error"
+#define kExprTag					"<--expr-->"
+#define kVarsTag					"<--vars-->"
+#define kExprTagLen					10
+#define kVarsTagLen					10
+
 /***********************************************************************
  *
  *	Global variables
@@ -38,8 +49,10 @@ static DmOpenRef sMemoDB;
 static UInt16 sMemoCalcCategory;
 
 /* **** **** List View **** **** */
-static UInt16 sCurrentRecIndex;
-static UInt16 sTopVisibleRecIndex;
+static UInt16 sCurrentRecIndex, sTopVisibleRecIndex;
+
+/* **** **** Edit View **** **** */
+static MemHandle sMemoH;
 
 /***********************************************************************
  *
@@ -147,6 +160,175 @@ static UInt16 StopApplication (void)
 	return err;
 }
 
+
+/***********************************************************************
+ *
+ * FUNCTION:    EditViewEval
+ *
+ * DESCRIPTION: 
+ *
+ * PARAMETERS:  Pointer to the edit view form
+ *
+ * RETURNED:    nothing
+ *
+ ***********************************************************************/
+
+static void EditViewEval (FormPtr frmP)
+{
+	static Char resultBuf[kFlpBufSize];
+	FieldPtr exprFldP, varsFldP, resultFldP;
+	Char * exprStr, * varsStr;
+	FlpCompDouble result;
+	UInt8 err;
+
+	exprFldP = FrmGetObjectPtr(frmP, FrmGetObjectIndex(frmP, ExprField));
+	varsFldP = FrmGetObjectPtr(frmP, FrmGetObjectIndex(frmP, VarsField));
+	resultFldP = FrmGetObjectPtr(frmP, FrmGetObjectIndex(frmP, ResultField));
+
+	exprStr = FldGetTextPtr(exprFldP);
+	varsStr = FldGetTextPtr(varsFldP);
+
+	err = Eval(exprStr, varsStr, &(result.d));
+
+	if (err)
+		StrCopy(resultBuf, kErrorStr);
+	else
+		FlpFToA(result.fd, resultBuf);
+
+	FldSetTextPtr(resultFldP, resultBuf);
+	FrmUpdateForm(EditView, frmRedrawUpdateCode);
+}
+
+
+/***********************************************************************
+ *
+ * FUNCTION:    EditViewSave
+ *
+ * DESCRIPTION: 
+ *
+ * PARAMETERS:  Pointer to the edit view form
+ *
+ * RETURNED:    nothing
+ *
+ ***********************************************************************/
+
+static void EditViewSave (FormPtr frmP)
+{
+
+	MemHandle exprH, varsH;
+	Char * memoStr, * exprStr, * varsStr, * tmpStr;
+	FieldPtr exprFldP, varsFldP;
+	UInt16 memoLen, exprLen, varsLen, titleLen, attr;
+
+	memoLen = exprLen = varsLen = titleLen = 0;
+	memoStr = exprStr = varsStr = tmpStr = NULL;
+
+TraceOutput(TL(appErrorClass, "EditViewSave memoLen: %d exprLen: %d varsLen: %d titleLen: %d ",
+                              memoLen, exprLen, varsLen, titleLen));
+
+	if (sMemoH)
+	{
+		memoStr = (Char*) MemHandleLock(sMemoH);
+TraceOutput(TL(appErrorClass, "EditViewSave memoStr : %s", memoStr));
+		titleLen = memoLen = StrLen(memoStr);
+		tmpStr = StrStr(memoStr, kVarsTag);
+		if (tmpStr)
+			titleLen = (UInt32)tmpStr - (UInt32)memoStr;
+		else
+		{
+			tmpStr = StrStr(memoStr, kExprTag);
+			if (tmpStr)
+				titleLen = (UInt32)tmpStr - (UInt32)memoStr;
+		}
+	}
+
+TraceOutput(TL(appErrorClass, "EditViewSave memoLen: %d exprLen: %d varsLen: %d titleLen: %d ",
+                              memoLen, exprLen, varsLen, titleLen));
+	exprFldP = FrmGetObjectPtr(frmP, FrmGetObjectIndex(frmP, ExprField));
+	exprH = FldGetTextHandle(exprFldP);
+	if (exprH)
+	{
+		exprStr = (Char*) MemHandleLock(exprH);
+		exprLen = StrLen(exprStr);
+TraceOutput(TL(appErrorClass, "EditViewSave expr_%d_%s", exprLen, exprStr));
+	}
+
+TraceOutput(TL(appErrorClass, "EditViewSave memoLen: %d exprLen: %d varsLen: %d titleLen: %d ",
+                              memoLen, exprLen, varsLen, titleLen));
+	varsFldP = FrmGetObjectPtr(frmP, FrmGetObjectIndex(frmP, VarsField));
+	varsH = FldGetTextHandle(varsFldP);
+	if (varsH)
+	{
+		varsStr = (Char*) MemHandleLock(varsH);
+		varsLen = StrLen(varsStr);
+TraceOutput(TL(appErrorClass, "EditViewSave varsStr_%d_%s", varsLen, varsStr));
+	}
+
+	memoLen = titleLen + kVarsTagLen + varsLen + kExprTagLen + exprLen;
+
+TraceOutput(TL(appErrorClass, "EditViewSave memoLen: %d exprLen: %d varsLen: %d titleLen: %d ",
+                              memoLen, exprLen, varsLen, titleLen));
+	if (sCurrentRecIndex != dmMaxRecordIndex)
+	{
+		if (sMemoH)
+			MemHandleUnlock(sMemoH);
+		DmReleaseRecord(sMemoDB, sCurrentRecIndex, false);
+		DmResizeRecord(sMemoDB, sCurrentRecIndex, memoLen + 1 );
+		sMemoH = DmGetRecord(sMemoDB, sCurrentRecIndex);
+	}
+	else
+	{
+		sMemoH = DmNewRecord(sMemoDB, &sCurrentRecIndex, memoLen + 1 );
+		if (sMemoCalcCategory != dmAllCategories)
+		{
+			DmRecordInfo(sMemoDB, sCurrentRecIndex, &attr, NULL, NULL);
+			attr = attr & ~dmRecAttrCategoryMask;
+			attr = attr | sMemoCalcCategory;
+			DmSetRecordInfo(sMemoDB, sCurrentRecIndex, &attr, NULL);
+		}
+	}
+
+	memoStr = (Char*) MemHandleLock(sMemoH);
+TraceOutput(TL(appErrorClass, "EditViewSave memoStr : %s", memoStr));
+
+	DmWrite(memoStr, titleLen, kVarsTag, kVarsTagLen);
+TraceOutput(TL(appErrorClass, "_%d_%s", titleLen, kVarsTag));
+	if (varsLen)
+	{
+		DmWrite(memoStr, titleLen + kVarsTagLen, varsStr, varsLen);
+TraceOutput(TL(appErrorClass, "_%d_%s", titleLen + kVarsTagLen, varsStr));
+	}
+TraceOutput(TL(appErrorClass, "EditViewSave memoVarsStr : %s", memoStr));
+
+	DmWrite(memoStr, titleLen + kVarsTagLen + varsLen, kExprTag, kExprTagLen);
+TraceOutput(TL(appErrorClass, "_%d_%s", titleLen + kVarsTagLen + varsLen, kExprTag));
+	if (exprLen)
+	{
+		DmWrite(memoStr, titleLen + kVarsTagLen + varsLen + kExprTagLen, exprStr, exprLen);
+TraceOutput(TL(appErrorClass, "_%d_%s", titleLen + kVarsTagLen + varsLen + kExprTagLen, exprStr));
+	}
+TraceOutput(TL(appErrorClass, "EditViewSave memoVarsExprStr : %s", memoStr));
+
+	DmSet(memoStr, memoLen, 1, 0);
+TraceOutput(TL(appErrorClass, "EditViewSave memoStr : %s", memoStr));
+
+	if (exprH)
+		MemHandleUnlock(exprH);
+	if (varsH)
+		MemHandleUnlock(varsH);
+	if (sMemoH)
+	{
+		MemHandleUnlock(sMemoH);
+		sMemoH = NULL;
+	}
+	if (sCurrentRecIndex != dmMaxRecordIndex)
+	{
+		DmReleaseRecord(sMemoDB, sCurrentRecIndex, false);
+		sCurrentRecIndex = dmMaxRecordIndex;
+	}
+}
+
+
 /***********************************************************************
  *
  * FUNCTION:    EditViewInit
@@ -161,15 +343,45 @@ static UInt16 StopApplication (void)
 
 static void EditViewInit (FormPtr frmP)
 {
-	MemHandle memoH;
-	FieldPtr fldP;
+	MemHandle exprH, varsH;
+	Char * memoStr, * exprStr, *varsStr, * tmpStr;
+	FieldPtr exprFldP, varsFldP;
 
+	sMemoH = NULL;
 	if (sCurrentRecIndex == dmMaxRecordIndex)
 		return;
 	
-	fldP = FrmGetObjectPtr(frmP, FrmGetObjectIndex(frmP, ExprField));
-	memoH = DmQueryRecord(sMemoDB, sCurrentRecIndex);
-	FldSetTextHandle (fldP, memoH);
+	sMemoH = DmGetRecord(sMemoDB, sCurrentRecIndex);
+	memoStr = (Char*) MemHandleLock(sMemoH);
+TraceOutput(TL(appErrorClass, "EditViewInit memo : %s", memoStr));
+	exprStr = StrStr(memoStr, kExprTag);
+	if (exprStr)
+	{
+		exprStr += kExprTagLen;
+TraceOutput(TL(appErrorClass, "EditViewInit expr : %s", exprStr));
+		exprH = MemHandleNew(1 + (UInt32)exprStr - (UInt32)memoStr);
+		tmpStr = MemHandleLock(exprH);
+		StrNCopy(tmpStr, exprStr, (UInt32)exprStr - (UInt32)memoStr);
+		tmpStr[(UInt16)((UInt32)exprStr - (UInt32)memoStr)] = nullChr;
+		MemHandleUnlock(exprH);
+		exprFldP = FrmGetObjectPtr(frmP, FrmGetObjectIndex(frmP, ExprField));
+		FldSetTextHandle (exprFldP, exprH);
+	}
+	varsStr = StrStr(memoStr, kVarsTag);
+	if (varsStr && exprStr && varsStr < exprStr)
+	{
+		varsStr += kVarsTagLen;
+TraceOutput(TL(appErrorClass, "EditViewInit vars : %s", varsStr));
+		varsH = MemHandleNew(1 + (UInt32)exprStr - kExprTagLen - (UInt32)varsStr);
+		tmpStr = MemHandleLock(varsH);
+		StrNCopy(tmpStr, varsStr, (UInt32)exprStr - kExprTagLen - (UInt32)varsStr);
+		tmpStr[(UInt16)((UInt32)exprStr - kExprTagLen - (UInt32)varsStr)] = nullChr;
+		MemHandleUnlock(varsH);
+		varsFldP = FrmGetObjectPtr(frmP, FrmGetObjectIndex(frmP, VarsField));
+		FldSetTextHandle (varsFldP, varsH);
+	}
+
+	MemHandleUnlock(sMemoH);
 }
 
 
@@ -202,8 +414,7 @@ static Boolean EditViewHandleEvent (EventType * evtP)
 
 		case frmCloseEvent:
 			frmP = FrmGetActiveForm();
-			exprFldP = FrmGetObjectPtr(frmP, FrmGetObjectIndex(frmP, ExprField));
-			FldSetTextHandle (exprFldP, NULL);
+			EditViewSave(frmP);
 		break;
 
 
@@ -212,6 +423,12 @@ static Boolean EditViewHandleEvent (EventType * evtP)
 			{
 				case DoneButton:
 					FrmGotoForm(ListView);
+					handled = true;
+				break;
+
+				case EvalButton:
+					frmP = FrmGetActiveForm();
+					EditViewEval(frmP);
 					handled = true;
 				break;
 			}
@@ -524,6 +741,7 @@ TraceOutput(TL(appErrorClass, "ListViewHandleEvent : form drawn"));
 			{
 				case ListViewRecordNewMenu:
 					MenuEraseStatus(NULL);
+					sCurrentRecIndex = dmMaxRecordIndex;
 					FrmGotoForm(EditView);
 					handled = true;
 				break;
