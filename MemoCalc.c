@@ -216,18 +216,21 @@ static UInt16 StartApplication (void)
 	// Memo DB
 	sMemoDB = NULL;
 	sMemoCalcCategory = dmAllCategories;
-	// List View
-	if (FtrGet(sysFileCMemoCalc, memoCalcCurrRecFtrNum, &ftr))
-		sCurrentRecIndex = dmMaxRecordIndex;
-	else 
-		sCurrentRecIndex = (UInt16) ftr;
-	sSavedRecIndex = sCurrentRecIndex;
-	sTopVisibleRecIndex = 0;
 
 // Run init code
 	err = MemoCalcMathLibOpen();
 	err = MemoCalcDBOpen(&sMemoDB, &sMemoCalcCategory);
+	if (err)
+		goto Exit;
 
+	// List View
+	if (FtrGet(sysFileCMemoCalc, memoCalcCurrRecFtrNum, &ftr)
+        || DmFindRecordByID(sMemoDB, ftr, &sCurrentRecIndex))
+		sCurrentRecIndex = dmMaxRecordIndex;
+	sSavedRecIndex = sCurrentRecIndex;
+	sTopVisibleRecIndex = 0;
+
+Exit:
 	return err;
 }
 
@@ -256,7 +259,7 @@ static UInt16 StopApplication (void)
 
 /***********************************************************************
  *
- * FUNCTION:    EditViewUpdateScrollBar
+ * FUNCTION:    MemoCalcUIUpdateScrollBar
  *
  * DESCRIPTION: 
  *
@@ -266,7 +269,7 @@ static UInt16 StopApplication (void)
  *
  ***********************************************************************/
 
-static void EditViewUpdateScrollBar (FormPtr frmP, UInt16 fieldID, UInt16 barID)
+static void MemoCalcUIUpdateScrollBar (FormPtr frmP, UInt16 fieldID, UInt16 barID)
 {
 	UInt16 scrollPos, textHeight, fieldHeight, maxValue;
 	FieldPtr fldP;
@@ -284,13 +287,13 @@ static void EditViewUpdateScrollBar (FormPtr frmP, UInt16 fieldID, UInt16 barID)
 	else
 		maxValue = 0;
 
-	SclSetScrollBar(barP, (Int16)scrollPos, 0, (Int16)maxValue, 1);
+	SclSetScrollBar(barP, (Int16)scrollPos, 0, (Int16)maxValue, fieldHeight-1);
 }
 
 
 /***********************************************************************
  *
- * FUNCTION:    EditViewScroll
+ * FUNCTION:    MemoCalcUIScroll
  *
  * DESCRIPTION: 
  *
@@ -300,7 +303,7 @@ static void EditViewUpdateScrollBar (FormPtr frmP, UInt16 fieldID, UInt16 barID)
  *
  ***********************************************************************/
 
-static void EditViewScroll (FormPtr frmP, Int16 linesToScroll, UInt16 fieldID, UInt16 barID)
+static void MemoCalcUIScroll (FormPtr frmP, Int16 linesToScroll, UInt16 fieldID, UInt16 barID)
 {
 	FieldPtr fldP;
 
@@ -311,7 +314,7 @@ static void EditViewScroll (FormPtr frmP, Int16 linesToScroll, UInt16 fieldID, U
 	else if (linesToScroll > 0)
 		FldScrollField (fldP, linesToScroll, winDown);
 
-	EditViewUpdateScrollBar(frmP, fieldID, barID);
+	MemoCalcUIUpdateScrollBar(frmP, fieldID, barID);
 }
 
 
@@ -460,7 +463,7 @@ static void EditViewToggleVarsView (FormPtr frmP)
 		if (valStart < valEnd)
 			FldSetSelection(varsFldP, valStart, valEnd);
 
-             EditViewUpdateScrollBar(frmP, VarsField, VarsScrollBar);
+             MemoCalcUIUpdateScrollBar(frmP, VarsField, VarsScrollBar);
 	}
 
 	EditViewToggleExprButtons(frmP);
@@ -524,6 +527,7 @@ static void EditViewSave (FormPtr frmP)
 	MemHandle exprH, varsH;
 	Char * memoStr, * exprStr, * varsStr, * tmpStr;
 	FieldPtr exprFldP, varsFldP;
+	UInt32 ftr;
 	UInt16 memoLen, exprLen, varsLen, titleLen, attr;
 
 	memoLen = exprLen = varsLen = titleLen = 0;
@@ -618,14 +622,17 @@ Cleanup:
 		MemHandleUnlock(sMemoH);
 		sMemoH = NULL;
 	}
-	FtrSet(sysFileCMemoCalc, memoCalcCurrRecFtrNum, (UInt32)sCurrentRecIndex);
+	if (DmRecordInfo(sMemoDB, sCurrentRecIndex, NULL, &ftr, NULL))
+		ftr = (UInt32)sCurrentRecIndex = dmMaxRecordIndex;
+	FtrSet(sysFileCMemoCalc, memoCalcCurrRecFtrNum, ftr);
 	if (sCurrentRecIndex != dmMaxRecordIndex)
 	{
 		DmReleaseRecord(sMemoDB, sCurrentRecIndex, true);
 		if (sEditorSavePolicy == editorDeleteMemo 
 		|| (sEditorSavePolicy == editorSaveMemo && (exprLen + varsLen + titleLen == 0)))
 		{
-			DmRemoveRecord(sMemoDB, sCurrentRecIndex);
+			DmDeleteRecord(sMemoDB, sCurrentRecIndex);
+			DmMoveRecord(sMemoDB, sCurrentRecIndex, DmNumRecords(sMemoDB));
 			FtrSet(sysFileCMemoCalc, memoCalcCurrRecFtrNum, (UInt32)dmMaxRecordIndex);
 			sSavedRecIndex = dmMaxRecordIndex;
 		}
@@ -730,7 +737,7 @@ static void EditViewInit (FormPtr frmP)
 		MemHandleUnlock(sMemoH);
 	}
 
-        EditViewUpdateScrollBar(frmP, ExprField, ExprScrollBar);
+	MemoCalcUIUpdateScrollBar(frmP, ExprField, ExprScrollBar);
 	FrmSetFocus(frmP, FrmGetObjectIndex(frmP, ExprField));
 	EditViewToggleVarsView(frmP);
 }
@@ -781,7 +788,7 @@ static Boolean EditViewHandleEvent (EventType * evtP)
 			if (evtP->data.fldChanged.fieldID != VarsField && evtP->data.fldChanged.fieldID != ExprField)
 				break;
 			frmP = FrmGetActiveForm();
-			EditViewUpdateScrollBar(frmP, evtP->data.fldChanged.fieldID,
+			MemoCalcUIUpdateScrollBar(frmP, evtP->data.fldChanged.fieldID,
 			evtP->data.fldChanged.fieldID == VarsField ? VarsScrollBar : ExprScrollBar);
 			if (evtP->data.fldChanged.fieldID == VarsField)
 				LstSetSelection(FrmGetObjectPtr(frmP, FrmGetObjectIndex(frmP, VarsList)), noListSelection);
@@ -790,6 +797,22 @@ static Boolean EditViewHandleEvent (EventType * evtP)
 
 		case penDownEvent:
 			sEditViewTapCount = evtP->tapCount;
+		break;
+
+		case keyDownEvent:
+			if (evtP->data.keyDown.chr != vchrPageUp && evtP->data.keyDown.chr != vchrPageDown)
+				break;
+			sEditorSavePolicy = editorSaveMemo;
+			frmP = FrmGetActiveForm();
+			EditViewSave(frmP);
+			sCurrentRecIndex = sSavedRecIndex;
+			if (DmSeekRecordInCategory(sMemoDB, &sCurrentRecIndex, 1, evtP->data.keyDown.chr == vchrPageDown ? dmSeekForward : dmSeekBackward, sMemoCalcCategory))
+			{
+				sCurrentRecIndex = sSavedRecIndex;
+				SndPlaySystemSound(sndError);
+			}	
+			EditViewInit(frmP);
+			handled = true;
 		break;
 
 		case popSelectEvent:
@@ -834,7 +857,7 @@ static Boolean EditViewHandleEvent (EventType * evtP)
 
 		case sclRepeatEvent:
 			frmP = FrmGetActiveForm();
-			EditViewScroll(frmP, evtP->data.sclRepeat.newValue - evtP->data.sclRepeat.value,
+			MemoCalcUIScroll(frmP, evtP->data.sclRepeat.newValue - evtP->data.sclRepeat.value,
 			evtP->data.sclRepeat.scrollBarID == VarsScrollBar ? VarsField : ExprField,
                         evtP->data.sclRepeat.scrollBarID);
 		break;
@@ -1349,17 +1372,32 @@ static Boolean MemoViewHandleEvent (EventType * evtP)
 			sCurrentRecIndex = sSavedRecIndex;
 			sMemoH = DmGetRecord(sMemoDB, sCurrentRecIndex);
 			frmP = FrmGetActiveForm();
-			fldP = FrmGetObjectPtr(frmP, FrmGetObjectIndex(frmP, MemoViewEdit));
+			fldP = FrmGetObjectPtr(frmP, FrmGetObjectIndex(frmP, MemoViewEditField));
 			FldSetTextHandle(fldP, sMemoH);
+			MemoCalcUIUpdateScrollBar(frmP, MemoViewEditField, MemoViewScrollBar);
+			FrmSetFocus(frmP, FrmGetObjectIndex(frmP, MemoViewEditField));
+			FldSetInsertionPoint(fldP, 0);
 			FrmDrawForm(frmP);
 			handled = true;
 		break;
 
 		case frmCloseEvent:
 			frmP = FrmGetActiveForm();
-			fldP = FrmGetObjectPtr(frmP, FrmGetObjectIndex(frmP, MemoViewEdit));
+			fldP = FrmGetObjectPtr(frmP, FrmGetObjectIndex(frmP, MemoViewEditField));
 			FldSetTextHandle(fldP, NULL);
 			DmReleaseRecord(sMemoDB, sCurrentRecIndex, true);
+		break;
+
+		case fldChangedEvent:
+			frmP = FrmGetActiveForm();
+			MemoCalcUIUpdateScrollBar(frmP, MemoViewEditField, MemoViewScrollBar);
+			handled = true;
+		break;
+
+		case sclRepeatEvent:
+			frmP = FrmGetActiveForm();
+			MemoCalcUIScroll(frmP, evtP->data.sclRepeat.newValue - evtP->data.sclRepeat.value,
+				MemoViewEditField, MemoViewScrollBar);
 		break;
 
 		case ctlSelectEvent:
