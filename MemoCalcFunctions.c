@@ -87,6 +87,58 @@ static FuncType * funcRefs[] = {
 
 /***********************************************************************
  *
+ *	Constants names and values at the same indices
+ *
+ ***********************************************************************/
+
+static Char * constNames[] = {
+"e",
+"pi",
+"g",
+"c",
+NULL
+};
+
+static double constValues[] = {
+2.718281828,
+3.141592654,
+9.80665,
+299792458
+};
+
+
+/***********************************************************************
+ *
+ * FUNCTION:    GetConst
+ *
+ * DESCRIPTION: Returns a function pointer from the name
+ *
+ * PARAMETERS:  a funcRef struct (I name / O func)
+ *
+ * RETURNED:	0 if found
+ *
+ ***********************************************************************/
+
+UInt8 GetConst (double * valueP, Char * constName, UInt16 len)
+{
+      UInt16 i=0;
+
+      while (constNames[i])
+      {
+            if (StrNCompare(constName, constNames[i], len) == 0)
+            {
+            	* valueP = constValues[i];
+            	return 0;
+            }
+            ++i;
+      }
+
+      return 1;
+}
+
+
+/***********************************************************************
+ *
  * FUNCTION:    GetFunc
  *
  * DESCRIPTION: Returns a function pointer from the name
@@ -117,7 +169,6 @@ UInt8 GetFunc (FuncRef * funcRefP, Char * funcName, UInt16 len)
 
       return 1;
 }
-
 
 
 /***********************************************************************

@@ -22,17 +22,19 @@
 // unassigned data masks
 
 #define mValue   			0x01
+#define mConstant  			0x02
 #define mVariable			0x10
 #define mFunction			0x20
 
 // data types
 
 #define tNumber   			(mValue)
+#define tConstant			(mConstant | mValue)
 #define tVariable			(mVariable | mValue)
 #define tFunction			(mFunction | mValue)
 
 // tokens
-#define tName				(mVariable | mFunction)
+#define tName				(mConstant | mVariable | mFunction)
 
 // atof, ftoa
 #define kFlpBufSize			80

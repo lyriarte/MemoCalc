@@ -10,41 +10,11 @@
  *
  ***********************************************************************/
 
-#if defined(__INTEL__) || defined(__i386__) || defined(WIN32)
-
-#include <malloc.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-typedef union { double d; double fd; } FlpCompDouble;
-#define UInt32 unsigned int
-#define UInt16 unsigned short
-#define UInt8 unsigned char
-#define Char char
-
-#define nullChr 0
-
-#define MemPtrNew malloc
-#define MemPtrFree free
-#define MemSet memset
-#define FlpBufferAToF(f, a) *(f) = atof(a)
-#define StrNCompare strncmp
-#define StrCopy strcpy
-#define StrLen strlen
-
-UInt8 GetFunc (void * funcRefP, Char * funcName, UInt16 len) { return 1;}
-
-#else
-
 #define TRACE_OUTPUT TRACE_OUTPUT_ON
 
 #include <PalmOS.h>
 #include <FloatMgr.h>
 #include <TraceMgr.h>
-
-#endif
-
 
 #include "MemoCalcFunctions.h"
 #include "MemoCalcLexer.h"
@@ -437,7 +407,13 @@ UInt8 AssignTokenValue (TokenList * tokL, VarList * varL)
         				varL->cellP = varL->cellP->nextP;
         			}
 					if (!(tokL->cellP->dataType & mValue))
-						err |= missingVarError;
+					{
+						if (GetConst(&(tokL->cellP->data.value), tokL->exprStr + tokL->cellP->data.indexPair.iStart,
+        					1 + tokL->cellP->data.indexPair.iEnd - tokL->cellP->data.indexPair.iStart) == 0)
+							tokL->cellP->dataType = tConstant;
+						else
+							err |= missingVarError;
+					}
 				}
 			break;
 		}

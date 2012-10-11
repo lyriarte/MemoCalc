@@ -25,6 +25,7 @@ typedef struct FuncRef {
 
 // functions
 
+UInt8 GetConst (double * valueP, Char * constName, UInt16 len);
 UInt8 GetFunc (FuncRef * funcRefP, Char * funcName, UInt16 len);
 UInt8 GetFuncsStringList (Char *** strTblP, Int16 * nStr);
 

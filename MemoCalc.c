@@ -338,6 +338,7 @@ static void EditViewToggleExprButtons (FormPtr frmP)
 		FrmShowObject(frmP, FrmGetObjectIndex(frmP, Bopn));
 		FrmShowObject(frmP, FrmGetObjectIndex(frmP, Bcls));
 		FrmShowObject(frmP, FrmGetObjectIndex(frmP, Bclr));
+		FrmHideObject(frmP, FrmGetObjectIndex(frmP, Bequ));
 		if (MathLibRef)
 		{
 			FrmShowObject(frmP, FrmGetObjectIndex(frmP, Bexp));
@@ -357,6 +358,8 @@ static void EditViewToggleExprButtons (FormPtr frmP)
 			FrmHideObject(frmP, FrmGetObjectIndex(frmP, Bexp));
 			FrmHideObject(frmP, FrmGetObjectIndex(frmP, FunctionsTrigger));
 		}
+		if (FrmGetFocus(frmP) == FrmGetObjectIndex(frmP, VarsField))
+			FrmShowObject(frmP, FrmGetObjectIndex(frmP, Bequ));
 	}
 
 	FrmUpdateForm(EditView, frmRedrawUpdateCode);

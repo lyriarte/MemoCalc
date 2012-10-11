@@ -10,48 +10,18 @@
  *
  ***********************************************************************/
 
-
-#if defined(__INTEL__) || defined(__i386__) || defined(WIN32)
-
-#include <malloc.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-typedef union { double d; double fd; } FlpCompDouble;
-#define UInt32 unsigned int
-#define UInt16 unsigned short
-#define UInt8 unsigned char
-#define Char char
-
-#define nullChr 0
-
-#define MemPtrNew malloc
-#define MemPtrFree free
-#define MemSet memset
-#define FlpBufferAToF(f, a) *(f) = atof(a)
-#define StrNCompare strncmp
-#define StrCopy strcpy
-#define StrLen strlen
-
-UInt16 MathLibRef = 0;
-
-#else
-
 #define TRACE_OUTPUT TRACE_OUTPUT_ON
 
 #include <PalmOS.h>
 #include <FloatMgr.h>
 #include <TraceMgr.h>
+
 #include "MathLib.h"
-
-extern UInt16 MathLibRef;
-
-#endif
-
 #include "MemoCalcFunctions.h"
 #include "MemoCalcLexer.h"
 #include "MemoCalcParser.h"
+
+extern UInt16 MathLibRef;
 
 /***********************************************************************
  *
@@ -222,7 +192,7 @@ static UInt8 ruleN (TokenList * tokL, ExprTree * exprT)
 		break;
 
 		case tName :
-			if (tokL->cellP->dataType & mVariable)
+			if (tokL->cellP->dataType & (mConstant | mVariable))
 			{
 				exprT->nodeP = NewExprNode(NULL, NULL, tokL->cellP->data.value, tokL->cellP->dataType, tokL->cellP->token);
 				tokL->cellP = tokL->cellP->nextP;
@@ -396,7 +366,7 @@ UInt8 RecurseExprNode (ExprNode * nodeP, double * resultP)
 		break;
 
 		case tName:
-			if (nodeP->dataType == tVariable)
+			if (nodeP->dataType & mValue)
 			   * resultP = nodeP->data.value;
 			else
 			    err |= missingVarError;
@@ -707,26 +677,3 @@ UInt8 FlpCmpDblToA(FlpCompDouble *f, Char *s)
 
 	return 0;
 }
-
-
-#if defined(__INTEL__) || defined(__i386__) || defined(WIN32)
-
-void main()
-{
-	TokenList tokL = { NULL, NULL, NULL } ;
-	VarList varL = { NULL, NULL, NULL} ;
-	ExprTree exprT = {NULL, NULL} ;
-	UInt8 err = 0;
-	double result;
-
-	tokL.exprStr = strdup( "toto * 40 - sin(pipo - 50)");
-	varL.varsStr = strdup("toto = 6.25 pipo = 100");
-
-	err |= ParseVariables(&varL);
-	err |= TokenizeExpression(&tokL);
-	err |= AssignTokenValue(&tokL, &varL);
-	err |= BuildExprTree(&tokL, &exprT);
-	err |= EvalExprTree(&exprT, &result);
-}
-
-#endif
