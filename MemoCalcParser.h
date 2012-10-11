@@ -19,5 +19,6 @@ UInt8 Eval (Char * exprStr, Char * varsStr, double * resultP);
 UInt8 MakeVarsStringList (Char * varsStr, Char *** strTblP, Int16 * nStr);
 
 UInt8 FlpCmpDblToA(FlpCompDouble *f, Char *s);
+UInt8 AToFlpCmpDbl(FlpCompDouble *f, Char *s);
 
 #endif // MEMOCALCPARSER_H

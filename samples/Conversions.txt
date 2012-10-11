@@ -1,0 +1,13 @@
+Conversion m / l / kg       
+
+<--vars-->
+mile=1609.347
+in=0.0254
+ft=0.3048
+yd=0.9144
+acre=4047
+gal=3.7854
+floz=0.02957353
+lb=0.4535924
+oz=0.02825
+<--expr-->5*ft+9*in

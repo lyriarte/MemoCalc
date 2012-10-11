@@ -74,7 +74,7 @@ DEFAULTBTNID AboutOkButton
 BEGIN
   TITLE "About MemoCalc"
   FORMBITMAP AT(64 40) BITMAP MemoCalc01bpp USABLE
-  LABEL "MemoCalc version 0.9" ID AboutLabel AT(24 80) USABLE FONT 1
+  LABEL "MemoCalc version 1.0" ID AboutLabel AT(24 80) USABLE FONT 1
   BUTTON "OK" ID AboutOkButton AT(56 134 40 15) USABLE LEFTANCHOR FRAME FONT 0
 END
 
@@ -152,7 +152,7 @@ BITMAP ID MemoCalc01bpp "MemoCalc01bpp.bmp" NOCOMPRESS
 
 APPLICATION ID MemoCalc "MeCa"
 
-VERSION ID AppVersion "0.9"
+VERSION ID AppVersion "1.0"
 
 ICON "MemoCalc01bpp.bmp"
 

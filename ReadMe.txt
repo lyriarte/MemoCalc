@@ -1,4 +1,4 @@
-MemoCalc v0.9
+MemoCalc v1.0
 
 - Lexer and Parser functional. Uses MathLib. Evaluation with +-*/ operators only if MathLib not present.
 - UI with variables and functions lists, memo editor, FlpCompDblToA. Saves last memo index in a feature.
@@ -8,3 +8,4 @@ MemoCalc v0.9
 - Removed checks on form focus, which failed on Treo600. Add a "Keyboard" menu in the edit view.
 - Changed application name from "Memo Calc" to "MemoCalc" to avoid confusion when installed from a card reader. DELETE THE PREVIOUS VERSION BEFORE INSTALLING THIS ONE. Changed version string resource ID to 1000 so it actually shows up in Launcher. Fixed error management for calulation error, division by zero, sqrt negative etc...
 - Fixed a bug with 0.8 that caused evaluation to fail when MathLib was not present
+- Fixed large numbers input method (was broken above 1 billion) and numbers printing.

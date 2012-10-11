@@ -2,11 +2,11 @@
 /***********************************************************************
  *
  * FILE : MemoCalcLexer.c
- * 
+ *
  * DESCRIPTION : Lexical analyser for MemoCalc
- * 
+ *
  * COPYRIGHT : (C) 2003 Luc Yriarte
- * 
+ *
  *
  ***********************************************************************/
 
@@ -18,6 +18,7 @@
 
 #include "MemoCalcFunctions.h"
 #include "MemoCalcLexer.h"
+#include "MemoCalcParser.h"
 
 /***********************************************************************
  *
@@ -105,7 +106,7 @@ static UInt8 GetNextState (UInt8 q, Char c)
 		break;
 
 		case qOpen:
-			if (isNumber(c)) 
+			if (isNumber(c))
 				return qInteger;
 			if (isLetter(c)) 
 				return qName;
@@ -329,7 +330,8 @@ UInt8 ParseVariables (VarList * varL)
 		// set a temporary null char to read the number string
 		tmpC = varL->varsStr[iEnd];
 		varL->varsStr[iEnd] = nullChr;
-		FlpBufferAToF(&(tmpF.fd), varL->varsStr + iStart);
+//		FlpBufferAToF(&(tmpF.fd), varL->varsStr + iStart);
+		AToFlpCmpDbl(&tmpF, varL->varsStr + iStart);
 
 		varP->value = tmpF.d;
 		varL->varsStr[iEnd] = tmpC;
@@ -374,7 +376,8 @@ UInt8 AssignTokenValue (TokenList * tokL, VarList * varL)
 				tokL->cellP->dataType = tNumber;
 				tmpC = tokL->exprStr[tokL->cellP->data.indexPair.iEnd+1];
 				tokL->exprStr[tokL->cellP->data.indexPair.iEnd+1] = 0;
-				FlpBufferAToF(&(tmpF.fd), tokL->exprStr + tokL->cellP->data.indexPair.iStart);
+//				FlpBufferAToF(&(tmpF.fd), tokL->exprStr + tokL->cellP->data.indexPair.iStart);
+				AToFlpCmpDbl(&tmpF, tokL->exprStr + tokL->cellP->data.indexPair.iStart);
 				tokL->exprStr[tokL->cellP->data.indexPair.iEnd+1] = tmpC;
 				tokL->cellP->data.value = tmpF.d;
 			break;

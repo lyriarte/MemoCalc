@@ -624,7 +624,7 @@ UInt8 FlpCmpDblToA(FlpCompDouble *f, Char *s)
 	FlpDouble a;
 	UInt32 mantissa;
 	Int32 signedMantissa;
-	Int16 i, exponent, sign;
+	Int16 i, exponent, sign, len;
 	UInt8 err;
 
 	if (f->d > 2000000000 || f->d < -2000000000)
@@ -633,7 +633,7 @@ UInt8 FlpCmpDblToA(FlpCompDouble *f, Char *s)
 	if (err = (UInt8) FlpBase10Info(f->fd, &mantissa, &exponent, &sign))
 		return err;
 
-// from FlpBase10Info reference : 
+// from FlpBase10Info reference :
 // The mantissa is normalized so it contains at least 8 significant digits when printed as an integer value.
 	if (exponent < -8 || exponent > 2)
 		return (UInt8) FlpFToA(f->fd, s);
@@ -654,7 +654,7 @@ UInt8 FlpCmpDblToA(FlpCompDouble *f, Char *s)
 	if (!signedMantissa || !exponent)
 		return (UInt8) 0;
 
-	i = StrLen(s);
+	i = len = StrLen(s);
 
 	if (exponent < 0)
 	{
@@ -666,6 +666,11 @@ UInt8 FlpCmpDblToA(FlpCompDouble *f, Char *s)
 		 	exponent++;
 		}
 		s[i] = '.';
+		i = len;
+		while (s[i] == '0')
+			s[i--] = nullChr;
+		if (s[i] == '.')
+			s[i] = nullChr;
 	}
 	if (exponent > 0)
 	{
@@ -683,3 +688,47 @@ UInt8 FlpCmpDblToA(FlpCompDouble *f, Char *s)
 
 	return 0;
 }
+
+
+/***********************************************************************
+ *
+ * FUNCTION:	AToFlpCmpDbl
+ *
+ * DESCRIPTION: for values over 1 billion, use FlpBufferAToF up to the
+ *	billion and multiply the resulting double by 10 for each truncated
+ *	digit.
+ *
+ * PARAMETERS:
+ *
+ * RETURNED:	0 if no error
+ *
+ ***********************************************************************/
+
+UInt8 AToFlpCmpDbl(FlpCompDouble *f, Char *s)
+{
+	Int16 i, len;
+	Char tmpC;
+
+	i = len = StrLen(s);
+	while (i && s[i] != '.')
+		--i;
+	if (i)
+		len = i;
+
+TraceOutput(TL(appErrorClass, "AToFlpCmpDbl %s len %d", s, len));
+	if (len > 10 || (len == 10 && s[0] > '1'))
+	{
+		i = 1 + len - 10;
+		tmpC = s[9]; s[9] = nullChr;
+TraceOutput(TL(appErrorClass, "AToFlpCmpDbl %s * 10^%d", s, i));
+		FlpBufferAToF(&(f->fd), s);
+		s[10] = tmpC;
+		while (i--)
+			f->d = f->d * 10;
+ 	}
+	else
+		FlpBufferAToF(&(f->fd), s);
+	return 0;
+}
+
+
