@@ -5,8 +5,8 @@
  * 
  * DESCRIPTION : Lexical analyser headers for MemoCalc
  * 
- * COPYRIGHT : GNU GENERAL PUBLIC LICENSE
- * http://www.gnu.org/licenses/gpl.txt
+ * COPYRIGHT : (C) 2003 Luc Yriarte
+ * 
  *
  ***********************************************************************/
 
@@ -33,6 +33,9 @@
 
 // tokens
 #define tName				(mVariable | mFunction)
+
+// atof, ftoa
+#define kFlpBufSize			80
 
 // types and structures
 typedef union {

@@ -5,8 +5,8 @@
  * 
  * DESCRIPTION : Lexical analyser for MemoCalc
  * 
- * COPYRIGHT : GNU GENERAL PUBLIC LICENSE
- * http://www.gnu.org/licenses/gpl.txt
+ * COPYRIGHT : (C) 2003 Luc Yriarte
+ * 
  *
  ***********************************************************************/
 
@@ -37,15 +37,17 @@ UInt8 GetFunc (void * funcRefP, Char * funcName, UInt16 len) { return 1;}
 
 #else
 
+#define TRACE_OUTPUT TRACE_OUTPUT_ON
+
 #include <PalmOS.h>
 #include <FloatMgr.h>
+#include <TraceMgr.h>
 
 #endif
 
 
 #include "MemoCalcFunctions.h"
 #include "MemoCalcLexer.h"
-
 
 /***********************************************************************
  *
@@ -289,9 +291,10 @@ UInt8 ParseVariables (VarList * varL)
 	VarCell * varP, * lastP;
 	UInt16 iStart, iNext, iEnd;
 	Char tmpC;
+	UInt8 err = 0;
 
 	if (! varL->varsStr)
-		return 0;
+		return err;
 
 	iStart = iNext = iEnd = 0;
 	varP = lastP = varL->headP;
@@ -302,6 +305,9 @@ UInt8 ParseVariables (VarList * varL)
 			++iNext;
 
 		// error or end of buffer
+		if (!(varL->varsStr[iNext]))
+			break;
+		err = parseError | missingVarError;
 		if (!isLetter(varL->varsStr[iNext]))
 			break;
 
@@ -354,13 +360,16 @@ UInt8 ParseVariables (VarList * varL)
 		tmpC = varL->varsStr[iEnd];
 		varL->varsStr[iEnd] = nullChr;
 		FlpBufferAToF(&(tmpF.fd), varL->varsStr + iStart);
+
 		varP->value = tmpF.d;
 		varL->varsStr[iEnd] = tmpC;
+
+		err = 0;
 	}
 	
 	// reset current cell and return end of buffer
 	varL->cellP = varL->headP;
-	return (UInt8) varL->varsStr[iNext];
+	return err;
 }
 
 
@@ -370,7 +379,7 @@ UInt8 ParseVariables (VarList * varL)
  *
  * DESCRIPTION: Assign a value for numeric tokens, names corresponding
  *		to a variable, or a function.
- *		Replaces state automata tokens with token types.
+ *		Set token data types.
  *
  * NOTE: The expr string has to be in write access.
  *
@@ -421,9 +430,9 @@ UInt8 AssignTokenValue (TokenList * tokL, VarList * varL)
         				if (StrNCompare(varL->cellP->name, tokL->exprStr + tokL->cellP->data.indexPair.iStart,
         					1 + tokL->cellP->data.indexPair.iEnd - tokL->cellP->data.indexPair.iStart) == 0)
         				{
-        					tokL->cellP->data.value = varL->cellP->value;
-                          			tokL->cellP->dataType |= mValue;
-       					break;
+							tokL->cellP->data.value = varL->cellP->value;
+							tokL->cellP->dataType |= mValue;
+							break;
         				}
         				varL->cellP = varL->cellP->nextP;
         			}

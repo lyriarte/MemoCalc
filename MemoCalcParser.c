@@ -5,8 +5,8 @@
  * 
  * DESCRIPTION : Grammatical analyser for MemoCalc
  * 
- * COPYRIGHT : GNU GENERAL PUBLIC LICENSE
- * http://www.gnu.org/licenses/gpl.txt
+ * COPYRIGHT : (C) 2003 Luc Yriarte
+ * 
  *
  ***********************************************************************/
 
@@ -38,8 +38,11 @@ UInt16 MathLibRef = 0;
 
 #else
 
+#define TRACE_OUTPUT TRACE_OUTPUT_ON
+
 #include <PalmOS.h>
 #include <FloatMgr.h>
+#include <TraceMgr.h>
 #include "MathLib.h"
 
 extern UInt16 MathLibRef;
@@ -558,6 +561,152 @@ CleanUp:
 	return err;
 }
 
+
+/***********************************************************************
+ *
+ * FUNCTION:    MakeVarsStringList
+ *
+ * DESCRIPTION: 
+ *
+ * PARAMETERS:  
+ *
+ * RETURNED:	0 if no error
+ *
+ ***********************************************************************/
+
+UInt8 MakeVarsStringList (Char * varsStr, Char *** strTblP, Int16 * nStr)
+{
+	VarList varL;
+	FlpCompDouble tmpF;
+	Int16 i, len;
+	UInt8 err = 0;
+
+	* strTblP = NULL;
+	* nStr = 0;
+
+	MemSet(&varL, sizeof(VarList), 0);
+	if (varsStr)
+	{
+		varL.varsStr = MemPtrNew(1 + StrLen(varsStr));
+		StrCopy(varL.varsStr, varsStr);
+	}
+
+	err |= ParseVariables(&varL);
+	if (err)
+		goto CleanUp;
+
+	varL.cellP = varL.headP;
+	while (varL.cellP)
+	{
+		(* nStr)++;
+		varL.cellP = varL.cellP->nextP;
+	}
+
+	* strTblP = MemPtrNew((* nStr) * sizeof(Char**));
+	i = 0;
+	varL.cellP = varL.headP;
+	while (varL.cellP)
+	{
+		len = StrLen(varL.cellP->name);
+		(* strTblP)[i] = MemPtrNew(len + 2 + kFlpBufSize);
+		MemSet((* strTblP)[i], len + 2 + kFlpBufSize, 0);
+		StrCopy((* strTblP)[i], varL.cellP->name);
+		(* strTblP)[i][len] = '=';
+		tmpF.d = varL.cellP->value;
+		FlpCmpDblToA(&tmpF, (* strTblP)[i] + len + 1);
+		varL.cellP = varL.cellP->nextP;
+		+++i;
+	}
+
+CleanUp:
+	while (varL.headP)
+	{
+		varL.cellP = varL.headP;
+		varL.headP = varL.headP->nextP;
+		MemPtrFree(varL.cellP);
+	}
+	if (varL.varsStr)
+		MemPtrFree(varL.varsStr);
+	return err;
+}
+
+
+/***********************************************************************
+ *
+ * FUNCTION:    FlpCmpDblToA
+ *
+ * DESCRIPTION: 
+ *
+ * PARAMETERS:
+ *
+ * RETURNED:	0 if no error
+ *
+ ***********************************************************************/
+
+UInt8 FlpCmpDblToA(FlpCompDouble *f, Char *s)
+{
+	FlpDouble a;
+        UInt32 mantissa;
+        Int32 signedMantissa;
+	Int16 i, exponent, sign;
+	UInt8 err;
+
+	if (f->d > 2000000000 || f->d < -2000000000)
+		return (UInt8) FlpFToA(f->fd, s);
+
+	if (err = (UInt8) FlpBase10Info(f->fd, &mantissa, &exponent, &sign))
+		return err;
+
+// from FlpBase10Info reference : 
+// The mantissa is normalized so it contains at least 8 significant digits when printed as an integer value.
+	if (exponent < -8 || exponent > 2)
+		return (UInt8) FlpFToA(f->fd, s);
+
+        signedMantissa = mantissa * (sign ? -1 : 1);
+
+        s ++;
+        s = StrIToA(s, signedMantissa);
+        s --;
+        if (s[1]=='-')
+        {
+			s[0] = '-';
+			s[1] = '0';
+        }
+        else
+			s[0] = ' ';
+
+	if (!signedMantissa || !exponent)
+		return (UInt8) 0;
+
+        i = StrLen(s);
+
+        if (exponent < 0)
+        {
+                s[i+1] = nullChr;
+                while (exponent)
+                {
+                       	s[i] = s[i-1];
+                       	i--;
+                       	exponent++;
+                }
+                s[i] = '.';
+        }
+        if (exponent > 0)
+        {
+                while (exponent)
+                {
+                       	s[i] = '0';
+                       	i++;
+                       	exponent--;
+                }
+                s[i] = nullChr;
+        }
+
+	if (s[1] == '.')
+		s[0] = '0';
+
+	return 0;
+}
 
 
 #if defined(__INTEL__) || defined(__i386__) || defined(WIN32)

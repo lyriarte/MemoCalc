@@ -5,8 +5,8 @@
  * 
  * DESCRIPTION : MemoCalc function names and MathLib calls
  *
- * COPYRIGHT : GNU GENERAL PUBLIC LICENSE
- * http://www.gnu.org/licenses/gpl.txt
+ * COPYRIGHT : (C) 2003 Luc Yriarte
+ * 
  *
  ***********************************************************************/
 
@@ -84,6 +84,7 @@ static FuncType * funcRefs[] = {
 &log2					// Base 2 logarithm of x
 };
 
+
 /***********************************************************************
  *
  * FUNCTION:    GetFunc
@@ -95,7 +96,6 @@ static FuncType * funcRefs[] = {
  * RETURNED:	0 if found
  *
  ***********************************************************************/
-
 
 UInt8 GetFunc (FuncRef * funcRefP, Char * funcName, UInt16 len)
 {
@@ -118,3 +118,33 @@ UInt8 GetFunc (FuncRef * funcRefP, Char * funcName, UInt16 len)
       return 1;
 }
 
+
+
+/***********************************************************************
+ *
+ * FUNCTION:    GetFuncsStringList
+ *
+ * DESCRIPTION: 
+ *
+ * PARAMETERS:  
+ *
+ * RETURNED:	0 if no error
+ *
+ ***********************************************************************/
+
+UInt8 GetFuncsStringList (Char *** strTblP, Int16 * nStr)
+{
+      *nStr = 0;
+	  *strTblP = NULL;
+
+      if (!MathLibRef)
+         return 1;
+
+      while (funcNames[*nStr])
+      {
+		  (*nStr)++;
+      }
+
+	  *strTblP = funcNames;
+      return 0;
+}

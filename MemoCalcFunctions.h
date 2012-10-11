@@ -5,8 +5,8 @@
  * 
  * DESCRIPTION : MemoCalc function names and MathLib calls
  *
- * COPYRIGHT : GNU GENERAL PUBLIC LICENSE
- * http://www.gnu.org/licenses/gpl.txt
+ * COPYRIGHT : (C) 2003 Luc Yriarte
+ * 
  *
  ***********************************************************************/
 
@@ -26,6 +26,7 @@ typedef struct FuncRef {
 // functions
 
 UInt8 GetFunc (FuncRef * funcRefP, Char * funcName, UInt16 len);
+UInt8 GetFuncsStringList (Char *** strTblP, Int16 * nStr);
 
 #endif // MEMOCALCFUNCTIONS_H
 
