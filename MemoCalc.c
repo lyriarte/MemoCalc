@@ -84,13 +84,13 @@ static Boolean sVarsOk, sVarsList;
 
 /***********************************************************************
  *
- * FUNCTION:    MemoCalcMathLibOpen
+ * FUNCTION:	MemoCalcMathLibOpen
  *
  * DESCRIPTION: 
  *
  * PARAMETERS:  
  *
- * RETURNED:    
+ * RETURNED:	
  *
  ***********************************************************************/
 
@@ -113,13 +113,13 @@ Exit:
 
 /***********************************************************************
  *
- * FUNCTION:    MemoCalcMathLibClose
+ * FUNCTION:	MemoCalcMathLibClose
  *
  * DESCRIPTION: 
  *
  * PARAMETERS:  
  *
- * RETURNED:    
+ * RETURNED:	
  *
  ***********************************************************************/
 
@@ -141,7 +141,7 @@ Exit:
 
 /***********************************************************************
  *
- * FUNCTION:    MemoCalcDBOpen
+ * FUNCTION:	MemoCalcDBOpen
  *
  * DESCRIPTION: Open the default Memo database in rw mode
  *		Check if category memoCalcDefaultCategoryName exists, otherwise
@@ -149,7 +149,7 @@ Exit:
  *
  * PARAMETERS:  DmOpenRef *dbPP
  *
- * RETURNED:    error code
+ * RETURNED:	error code
  *
  ***********************************************************************/
 
@@ -172,13 +172,13 @@ Exit:
 
 /***********************************************************************
  *
- * FUNCTION:    MemoCalcDBClose
+ * FUNCTION:	MemoCalcDBClose
  *
  * DESCRIPTION: Close the default Memo database
  *
  * PARAMETERS:  none
  *
- * RETURNED:    error code
+ * RETURNED:	error code
  *
  ***********************************************************************/
 
@@ -193,13 +193,13 @@ static UInt16 MemoCalcDBClose (DmOpenRef *dbPP)
 
 /***********************************************************************
  *
- * FUNCTION:    StartApplication
+ * FUNCTION:	StartApplication
  *
  * DESCRIPTION: Default initialization for the MemoCalc application.
  *
  * PARAMETERS:  none
  *
- * RETURNED:    error code
+ * RETURNED:	error code
  *
  ***********************************************************************/
 
@@ -225,7 +225,7 @@ static UInt16 StartApplication (void)
 
 	// List View
 	if (FtrGet(sysFileCMemoCalc, memoCalcCurrRecFtrNum, &ftr)
-        || DmFindRecordByID(sMemoDB, ftr, &sCurrentRecIndex))
+	|| DmFindRecordByID(sMemoDB, ftr, &sCurrentRecIndex))
 		sCurrentRecIndex = dmMaxRecordIndex;
 	sSavedRecIndex = sCurrentRecIndex;
 	sTopVisibleRecIndex = 0;
@@ -237,13 +237,13 @@ Exit:
 
 /***********************************************************************
  *
- * FUNCTION:    StopApplication
+ * FUNCTION:	StopApplication
  *
  * DESCRIPTION: Default cleanup code for the MemoCalc application.
  *
  * PARAMETERS:  none
  *
- * RETURNED:    error code
+ * RETURNED:	error code
  *
  ***********************************************************************/
 
@@ -259,13 +259,13 @@ static UInt16 StopApplication (void)
 
 /***********************************************************************
  *
- * FUNCTION:    MemoCalcUIUpdateScrollBar
+ * FUNCTION:	MemoCalcUIUpdateScrollBar
  *
  * DESCRIPTION: 
  *
  * PARAMETERS:  Pointer to the edit view form
  *
- * RETURNED:    nothing
+ * RETURNED:	nothing
  *
  ***********************************************************************/
 
@@ -293,13 +293,13 @@ static void MemoCalcUIUpdateScrollBar (FormPtr frmP, UInt16 fieldID, UInt16 barI
 
 /***********************************************************************
  *
- * FUNCTION:    MemoCalcUIScroll
+ * FUNCTION:	MemoCalcUIScroll
  *
  * DESCRIPTION: 
  *
  * PARAMETERS:  Pointer to the edit view form
  *
- * RETURNED:    nothing
+ * RETURNED:	nothing
  *
  ***********************************************************************/
 
@@ -320,13 +320,13 @@ static void MemoCalcUIScroll (FormPtr frmP, Int16 linesToScroll, UInt16 fieldID,
 
 /***********************************************************************
  *
- * FUNCTION:    EditViewToggleExprButtons
+ * FUNCTION:	EditViewToggleExprButtons
  *
  * DESCRIPTION: 
  *
  * PARAMETERS:  Pointer to the edit view form
  *
- * RETURNED:    nothing
+ * RETURNED:	nothing
  *
  ***********************************************************************/
 
@@ -371,13 +371,13 @@ static void EditViewToggleExprButtons (FormPtr frmP)
 
 /***********************************************************************
  *
- * FUNCTION:    EditViewToggleVarsView
+ * FUNCTION:	EditViewToggleVarsView
  *
  * DESCRIPTION: 
  *
  * PARAMETERS:  Pointer to the edit view form
  *
- * RETURNED:    nothing
+ * RETURNED:	nothing
  *
  ***********************************************************************/
 
@@ -463,7 +463,7 @@ static void EditViewToggleVarsView (FormPtr frmP)
 		if (valStart < valEnd)
 			FldSetSelection(varsFldP, valStart, valEnd);
 
-             MemoCalcUIUpdateScrollBar(frmP, VarsField, VarsScrollBar);
+		MemoCalcUIUpdateScrollBar(frmP, VarsField, VarsScrollBar);
 	}
 
 	EditViewToggleExprButtons(frmP);
@@ -472,13 +472,13 @@ static void EditViewToggleVarsView (FormPtr frmP)
 
 /***********************************************************************
  *
- * FUNCTION:    EditViewEval
+ * FUNCTION:	EditViewEval
  *
  * DESCRIPTION: 
  *
  * PARAMETERS:  Pointer to the edit view form
  *
- * RETURNED:    nothing
+ * RETURNED:	nothing
  *
  ***********************************************************************/
 
@@ -512,13 +512,13 @@ static void EditViewEval (FormPtr frmP)
 
 /***********************************************************************
  *
- * FUNCTION:    EditViewSave
+ * FUNCTION:	EditViewSave
  *
  * DESCRIPTION: 
  *
  * PARAMETERS:  Pointer to the edit view form
  *
- * RETURNED:    nothing
+ * RETURNED:	nothing
  *
  ***********************************************************************/
 
@@ -533,12 +533,12 @@ static void EditViewSave (FormPtr frmP)
 	memoLen = exprLen = varsLen = titleLen = 0;
 	memoStr = exprStr = varsStr = tmpStr = NULL;
 
-        if (sEditViewTitleStr)
-        {
-        	FrmSetTitle(frmP, kEditFormTitle);
-        	MemPtrFree(sEditViewTitleStr);
-        	sEditViewTitleStr = NULL;
-        }
+	if (sEditViewTitleStr)
+	{
+		FrmSetTitle(frmP, kEditFormTitle);
+		MemPtrFree(sEditViewTitleStr);
+		sEditViewTitleStr = NULL;
+	}
 
 	if (sMemoH)
 	{
@@ -622,7 +622,8 @@ Cleanup:
 		MemHandleUnlock(sMemoH);
 		sMemoH = NULL;
 	}
-	if (DmRecordInfo(sMemoDB, sCurrentRecIndex, NULL, &ftr, NULL))
+	if (sCurrentRecIndex == dmMaxRecordIndex
+	||	DmRecordInfo(sMemoDB, sCurrentRecIndex, NULL, &ftr, NULL))
 		ftr = (UInt32)sCurrentRecIndex = dmMaxRecordIndex;
 	FtrSet(sysFileCMemoCalc, memoCalcCurrRecFtrNum, ftr);
 	if (sCurrentRecIndex != dmMaxRecordIndex)
@@ -652,13 +653,13 @@ Cleanup:
 
 /***********************************************************************
  *
- * FUNCTION:    EditViewInit
+ * FUNCTION:	EditViewInit
  *
  * DESCRIPTION: Initialize edit view form, load current record
  *
  * PARAMETERS:  Pointer to the edit view form
  *
- * RETURNED:    nothing
+ * RETURNED:	nothing
  *
  ***********************************************************************/
 
@@ -697,7 +698,7 @@ static void EditViewInit (FormPtr frmP)
 	{	
 		sMemoH = DmGetRecord(sMemoDB, sCurrentRecIndex);
 		memoStr = (Char*) MemHandleLock(sMemoH);
-                titleLen = StrLen(memoStr);
+		titleLen = StrLen(memoStr);
 		exprStr = StrStr(memoStr, kExprTag);
 		if (exprStr)
 		{
@@ -731,8 +732,8 @@ static void EditViewInit (FormPtr frmP)
 				titleLen = (UInt16) ((UInt32)tmpStr - (UInt32)memoStr);
 			sEditViewTitleStr = MemPtrNew(1 + titleLen);
 			StrNCopy(sEditViewTitleStr, memoStr, titleLen);
-                        sEditViewTitleStr[titleLen] = nullChr;
-                        FrmSetTitle(frmP, sEditViewTitleStr);
+			sEditViewTitleStr[titleLen] = nullChr;
+			FrmSetTitle(frmP, sEditViewTitleStr);
 		}
 		MemHandleUnlock(sMemoH);
 	}
@@ -745,13 +746,13 @@ static void EditViewInit (FormPtr frmP)
 
 /***********************************************************************
  *
- * FUNCTION:    EditViewHandleEvent
+ * FUNCTION:	EditViewHandleEvent
  *
  * DESCRIPTION: Edit view form event handler
  *
  * PARAMETERS:  event pointer
  *
- * RETURNED:    true if the event was handled 
+ * RETURNED:	true if the event was handled 
  *
  ***********************************************************************/
 
@@ -859,7 +860,7 @@ static Boolean EditViewHandleEvent (EventType * evtP)
 			frmP = FrmGetActiveForm();
 			MemoCalcUIScroll(frmP, evtP->data.sclRepeat.newValue - evtP->data.sclRepeat.value,
 			evtP->data.sclRepeat.scrollBarID == VarsScrollBar ? VarsField : ExprField,
-                        evtP->data.sclRepeat.scrollBarID);
+						evtP->data.sclRepeat.scrollBarID);
 		break;
 
 		case ctlSelectEvent:
@@ -1001,9 +1002,9 @@ static Boolean EditViewHandleEvent (EventType * evtP)
 
 				case EditViewRecordDiscardMenu:
 					sEditorSavePolicy = editorDiscardMemo;
-		   			MemSet(&sAppEvent, sizeof(EventType), 0);
-			   		sAppEvent.eType = appStopEvent;
-			   		EvtAddEventToQueue(&sAppEvent);
+		 			MemSet(&sAppEvent, sizeof(EventType), 0);
+			 		sAppEvent.eType = appStopEvent;
+			 		EvtAddEventToQueue(&sAppEvent);
 					handled = true;
 					break;
 
@@ -1054,13 +1055,13 @@ static Boolean EditViewHandleEvent (EventType * evtP)
 
 /***********************************************************************
  *
- * FUNCTION:    ListViewDrawRecord
+ * FUNCTION:	ListViewDrawRecord
  *
  * DESCRIPTION: Table callback to draw records in the list view
  *
  * PARAMETERS:  tblP, row, col, rec¨P
  *
- * RETURNED:    nothing
+ * RETURNED:	nothing
  *
  ***********************************************************************/
 
@@ -1096,13 +1097,13 @@ static void ListViewDrawRecord (void * tblP, Int16 row, Int16 col, RectanglePtr 
 
 /***********************************************************************
  *
- * FUNCTION:    ListViewUpdateScrollers
+ * FUNCTION:	ListViewUpdateScrollers
  *
  * DESCRIPTION: Update the scroll arrows
  *
  * PARAMETERS:  Pointer to the list view form, top and bottom indexes
  *
- * RETURNED:    nothing
+ * RETURNED:	nothing
  *
  ***********************************************************************/
 
@@ -1126,13 +1127,13 @@ static void ListViewUpdateScrollers (FormPtr frmP, UInt16 topIndex, UInt16 botto
 
 /***********************************************************************
  *
- * FUNCTION:    ListViewLoadTable
+ * FUNCTION:	ListViewLoadTable
  *
  * DESCRIPTION: Load MemoDB records into the list view form
  *
  * PARAMETERS:  Pointer to the list view form
  *
- * RETURNED:    nothing
+ * RETURNED:	nothing
  *
  ***********************************************************************/
 
@@ -1181,13 +1182,13 @@ static void ListViewLoadTable (FormPtr frmP)
 
 /***********************************************************************
  *
- * FUNCTION:    ListViewScroll
+ * FUNCTION:	ListViewScroll
  *
  * DESCRIPTION: Scrolls list view
  *
  * PARAMETERS:  Form pointer, direction
  *
- * RETURNED:    nothing
+ * RETURNED:	nothing
  *
  ***********************************************************************/
 
@@ -1210,13 +1211,13 @@ static void ListViewScroll (FormPtr frmP, Int16 direction)
 
 /***********************************************************************
  *
- * FUNCTION:    ListViewInit
+ * FUNCTION:	ListViewInit
  *
  * DESCRIPTION: Initialize list view globals, call ListViewLoadTable
  *
  * PARAMETERS:  Pointer to the list view form
  *
- * RETURNED:    nothing
+ * RETURNED:	nothing
  *
  ***********************************************************************/
 
@@ -1256,13 +1257,13 @@ static void ListViewInit (FormPtr frmP)
 
 /***********************************************************************
  *
- * FUNCTION:    ListViewHandleEvent
+ * FUNCTION:	ListViewHandleEvent
  *
  * DESCRIPTION: List view form event handler
  *
  * PARAMETERS:  event pointer
  *
- * RETURNED:    true if the event was handled 
+ * RETURNED:	true if the event was handled 
  *
  ***********************************************************************/
 
@@ -1326,9 +1327,9 @@ static Boolean ListViewHandleEvent (EventType * evtP)
 				break;
 
 				case ListViewRecordQuitMenu:
-		   			MemSet(&sAppEvent, sizeof(EventType), 0);
-			   		sAppEvent.eType = appStopEvent;
-			   		EvtAddEventToQueue(&sAppEvent);
+		 			MemSet(&sAppEvent, sizeof(EventType), 0);
+			 		sAppEvent.eType = appStopEvent;
+			 		EvtAddEventToQueue(&sAppEvent);
 					handled = true;
 				break;
 
@@ -1350,13 +1351,13 @@ static Boolean ListViewHandleEvent (EventType * evtP)
 
 /***********************************************************************
  *
- * FUNCTION:    MemoViewHandleEvent
+ * FUNCTION:	MemoViewHandleEvent
  *
  * DESCRIPTION: Memo view form event handler
  *
  * PARAMETERS:  event pointer
  *
- * RETURNED:    true if the event was handled 
+ * RETURNED:	true if the event was handled 
  *
  ***********************************************************************/
 
@@ -1417,13 +1418,13 @@ static Boolean MemoViewHandleEvent (EventType * evtP)
 
 /***********************************************************************
  *
- * FUNCTION:    ApplicationHandleEvent
+ * FUNCTION:	ApplicationHandleEvent
  *
  * DESCRIPTION: Load form resources and set the form event handler
  *
  * PARAMETERS:  event pointer
  *
- * RETURNED:    true if the event was handled 
+ * RETURNED:	true if the event was handled 
  *
  ***********************************************************************/
 
@@ -1460,13 +1461,13 @@ static Boolean ApplicationHandleEvent (EventType * evtP)
 
 /***********************************************************************
  *
- * FUNCTION:    EventLoop
+ * FUNCTION:	EventLoop
  *
  * DESCRIPTION: Main event loop for the MemoCalc application.
  *
  * PARAMETERS:  none
  *
- * RETURNED:    nothing
+ * RETURNED:	nothing
  *
  ***********************************************************************/
 
@@ -1489,13 +1490,13 @@ static void EventLoop (void)
 
 /***********************************************************************
  *
- * FUNCTION:    PilotMain
+ * FUNCTION:	PilotMain
  *
  * DESCRIPTION: Main entry point for the MemoCalc application.
  *
  * PARAMETERS:  launch code, command block pointer, launch flags
  *
- * RETURNED:    error code
+ * RETURNED:	error code
  *
  ***********************************************************************/
 

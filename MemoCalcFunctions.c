@@ -109,7 +109,7 @@ static double constValues[] = {
 
 /***********************************************************************
  *
- * FUNCTION:    GetConst
+ * FUNCTION:	GetConst
  *
  * DESCRIPTION: Returns a function pointer from the name
  *
@@ -121,25 +121,25 @@ static double constValues[] = {
 
 UInt8 GetConst (double * valueP, Char * constName, UInt16 len)
 {
-      UInt16 i=0;
+	UInt16 i=0;
 
-      while (constNames[i])
-      {
-            if (StrNCompare(constName, constNames[i], len) == 0)
-            {
-            	* valueP = constValues[i];
-            	return 0;
-            }
-            ++i;
-      }
+	while (constNames[i])
+	{
+		if (StrNCompare(constName, constNames[i], len) == 0)
+		{
+			* valueP = constValues[i];
+			return 0;
+		}
+		++i;
+	}
 
-      return 1;
+	return 1;
 }
 
 
 /***********************************************************************
  *
- * FUNCTION:    GetFunc
+ * FUNCTION:	GetFunc
  *
  * DESCRIPTION: Returns a function pointer from the name
  *
@@ -151,29 +151,29 @@ UInt8 GetConst (double * valueP, Char * constName, UInt16 len)
 
 UInt8 GetFunc (FuncRef * funcRefP, Char * funcName, UInt16 len)
 {
-      UInt16 i=0;
+	UInt16 i=0;
 
-      if (!MathLibRef)
-         return 1;
+	if (!MathLibRef)
+		 return 1;
 
-      while (funcNames[i])
-      {
-            if (StrNCompare(funcName, funcNames[i], len) == 0)
-            {
-            	funcRefP->name = funcNames[i];
-            	funcRefP->func = funcRefs[i];
-            	return 0;
-            }
-            ++i;
-      }
+	while (funcNames[i])
+	{
+		if (StrNCompare(funcName, funcNames[i], len) == 0)
+		{
+			funcRefP->name = funcNames[i];
+			funcRefP->func = funcRefs[i];
+			return 0;
+		}
+		++i;
+	}
 
-      return 1;
+	return 1;
 }
 
 
 /***********************************************************************
  *
- * FUNCTION:    GetFuncsStringList
+ * FUNCTION:	GetFuncsStringList
  *
  * DESCRIPTION: 
  *
@@ -185,17 +185,17 @@ UInt8 GetFunc (FuncRef * funcRefP, Char * funcName, UInt16 len)
 
 UInt8 GetFuncsStringList (Char *** strTblP, Int16 * nStr)
 {
-      *nStr = 0;
-	  *strTblP = NULL;
+	*nStr = 0;
+	*strTblP = NULL;
 
-      if (!MathLibRef)
-         return 1;
+	if (!MathLibRef)
+		 return 1;
 
-      while (funcNames[*nStr])
-      {
-		  (*nStr)++;
-      }
+	while (funcNames[*nStr])
+	{
+		(*nStr)++;
+	}
 
-	  *strTblP = funcNames;
-      return 0;
+	*strTblP = funcNames;
+	return 0;
 }

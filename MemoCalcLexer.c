@@ -42,14 +42,14 @@
 
 /***********************************************************************
  *
- * FUNCTION:    GetNextState
+ * FUNCTION:	GetNextState
  *
  * DESCRIPTION: Finished state automata transition function. Given the 
  *		current state and input char, returns the next state.
  *
  * PARAMETERS:  Current state, input char
  *
- * RETURNED:    Next state
+ * RETURNED:	Next state
  *
  ***********************************************************************/
 
@@ -141,7 +141,7 @@ static UInt8 GetNextState (UInt8 q, Char c)
 
 /***********************************************************************
  *
- * FUNCTION:    TokenizeExpression 
+ * FUNCTION:	TokenizeExpression 
  *
  * DESCRIPTION: Generate a tokenList from an expression string
  *
@@ -237,7 +237,7 @@ UInt8 TokenizeExpression (TokenList * tokL)
 
 /***********************************************************************
  *
- * FUNCTION:    ParseVariables 
+ * FUNCTION:	ParseVariables 
  *
  * DESCRIPTION: Generate a varList from a vars declaration string. The
  *		variables declaration automata is simple enough there's no need
@@ -345,7 +345,7 @@ UInt8 ParseVariables (VarList * varL)
 
 /***********************************************************************
  *
- * FUNCTION:    AssignTokenValue 
+ * FUNCTION:	AssignTokenValue 
  *
  * DESCRIPTION: Assign a value for numeric tokens, names corresponding
  *		to a variable, or a function.
@@ -380,36 +380,36 @@ UInt8 AssignTokenValue (TokenList * tokL, VarList * varL)
 			break;
 
 			case tName:
-			    if (tokL->cellP->nextP && tokL->cellP->nextP->token == '(')
-			    {
-           			tokL->cellP->dataType = mFunction;
-        			if (GetFunc(&(tokL->cellP->data.funcRef), tokL->exprStr + tokL->cellP->data.indexPair.iStart,
-        				1 + tokL->cellP->data.indexPair.iEnd - tokL->cellP->data.indexPair.iStart) == 0)
-                    {
-                        tokL->cellP->dataType |= mValue;
-                    }	
+				if (tokL->cellP->nextP && tokL->cellP->nextP->token == '(')
+				{
+		 			tokL->cellP->dataType = mFunction;
+					if (GetFunc(&(tokL->cellP->data.funcRef), tokL->exprStr + tokL->cellP->data.indexPair.iStart,
+						1 + tokL->cellP->data.indexPair.iEnd - tokL->cellP->data.indexPair.iStart) == 0)
+					{
+						tokL->cellP->dataType |= mValue;
+					}	
 					else
 						err |= missingFuncError;
-			    }
-                else
-                {
-           			tokL->cellP->dataType = mVariable;
-        			varL->cellP = varL->headP;
-        			while (varL->cellP)
-        			{
-        				if (StrNCompare(varL->cellP->name, tokL->exprStr + tokL->cellP->data.indexPair.iStart,
-        					1 + tokL->cellP->data.indexPair.iEnd - tokL->cellP->data.indexPair.iStart) == 0)
-        				{
+				}
+				else
+				{
+		 			tokL->cellP->dataType = mVariable;
+					varL->cellP = varL->headP;
+					while (varL->cellP)
+					{
+						if (StrNCompare(varL->cellP->name, tokL->exprStr + tokL->cellP->data.indexPair.iStart,
+							1 + tokL->cellP->data.indexPair.iEnd - tokL->cellP->data.indexPair.iStart) == 0)
+						{
 							tokL->cellP->data.value = varL->cellP->value;
 							tokL->cellP->dataType |= mValue;
 							break;
-        				}
-        				varL->cellP = varL->cellP->nextP;
-        			}
+						}
+						varL->cellP = varL->cellP->nextP;
+					}
 					if (!(tokL->cellP->dataType & mValue))
 					{
 						if (GetConst(&(tokL->cellP->data.value), tokL->exprStr + tokL->cellP->data.indexPair.iStart,
-        					1 + tokL->cellP->data.indexPair.iEnd - tokL->cellP->data.indexPair.iStart) == 0)
+							1 + tokL->cellP->data.indexPair.iEnd - tokL->cellP->data.indexPair.iStart) == 0)
 							tokL->cellP->dataType = tConstant;
 						else
 							err |= missingVarError;

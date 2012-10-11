@@ -212,8 +212,8 @@ static UInt8 ruleN (TokenList * tokL, ExprTree * exprT)
 			exprT->nodeP = NewExprNode(exprT->nodeP, NULL, 0, 0, '(');
 			if (funcCell)
 			{
-          			exprT->nodeP->data.funcRef = funcCell->data.funcRef;
-          			exprT->nodeP->dataType = funcCell->dataType;
+				exprT->nodeP->data.funcRef = funcCell->data.funcRef;
+				exprT->nodeP->dataType = funcCell->dataType;
 			}
 			if (tokL->cellP && tokL->cellP->token == ')')
 				tokL->cellP = tokL->cellP->nextP;
@@ -232,7 +232,7 @@ static UInt8 ruleN (TokenList * tokL, ExprTree * exprT)
 
 /***********************************************************************
  *
- * FUNCTION:    NewExprNode 
+ * FUNCTION:	NewExprNode 
  *
  * DESCRIPTION: Create a new ExprNode from default values
  *
@@ -256,7 +256,7 @@ static ExprNode * NewExprNode(ExprNode * leftP, ExprNode * rightP, double value,
 
 /***********************************************************************
  *
- * FUNCTION:    NegRevertRightToLeft 
+ * FUNCTION:	NegRevertRightToLeft 
  *
  * DESCRIPTION: a - [b + c] => [a - b] + c
  *
@@ -274,9 +274,6 @@ UInt8 NegRevertRightToLeft (ExprNode * nodeP)
 	if (!nodeP)
 		return 0;
 
-	NegRevertRightToLeft(nodeP->leftP);
-	NegRevertRightToLeft(nodeP->rightP);
-
 	if ((nodeP->token == '-' && (nodeP->rightP->token == '-' || nodeP->rightP->token == '+'))
 	||  (nodeP->token == '/' && (nodeP->rightP->token == '/' || nodeP->rightP->token == '*')))
 	{
@@ -291,6 +288,13 @@ UInt8 NegRevertRightToLeft (ExprNode * nodeP)
 		tmpNodeP = nodeP->leftP;			// c + [a - b] [c]
 		nodeP->leftP = nodeP->rightP;			// [a - b] + [a - b] [c]
 		nodeP->rightP = tmpNodeP;			// [a - b] + c
+
+		NegRevertRightToLeft(nodeP);
+	}
+	else
+	{
+		NegRevertRightToLeft(nodeP->leftP);
+		NegRevertRightToLeft(nodeP->rightP);
 	}
 
 	return 0;
@@ -299,7 +303,7 @@ UInt8 NegRevertRightToLeft (ExprNode * nodeP)
 
 /***********************************************************************
  *
- * FUNCTION:    MakeNegativeOperatorsLeftRecursive 
+ * FUNCTION:	MakeNegativeOperatorsLeftRecursive 
  *
  * DESCRIPTION: Since the LL(1) parser is right-recursive, expressions
  *		spelled "a - b + c" are evaluated as "a - [b + c]" but
@@ -320,7 +324,7 @@ UInt8 MakeNegativeOperatorsLeftRecursive (ExprTree * exprT)
 
 /***********************************************************************
  *
- * FUNCTION:    BuildExprTree 
+ * FUNCTION:	BuildExprTree 
  *
  * DESCRIPTION: Builds an expression tree from a token list. The token
  *		values must have been already assigned.
@@ -344,7 +348,7 @@ UInt8 BuildExprTree (TokenList * tokL, ExprTree * exprT)
 
 /***********************************************************************
  *
- * FUNCTION:    RecurseExprNode 
+ * FUNCTION:	RecurseExprNode 
  *
  * DESCRIPTION: Evaluates an expression tree.
  *
@@ -367,9 +371,9 @@ UInt8 RecurseExprNode (ExprNode * nodeP, double * resultP)
 
 		case tName:
 			if (nodeP->dataType & mValue)
-			   * resultP = nodeP->data.value;
+				* resultP = nodeP->data.value;
 			else
-			    err |= missingVarError;
+				err |= missingVarError;
 		break;
 
 		case '(':
@@ -385,29 +389,29 @@ UInt8 RecurseExprNode (ExprNode * nodeP, double * resultP)
 
 		case '+':
 			if (!((err |= RecurseExprNode(nodeP->leftP, &left)) || (err |= RecurseExprNode(nodeP->rightP, &right))))
-			   * resultP = left + right;
+				* resultP = left + right;
 		break;
 
 		case '-':
 			if (!((err |= RecurseExprNode(nodeP->leftP, &left)) || (err |= RecurseExprNode(nodeP->rightP, &right))))
-			   * resultP = left - right;
+				* resultP = left - right;
 		break;
 
 		case '*':
 			if (!((err |= RecurseExprNode(nodeP->leftP, &left)) || (err |= RecurseExprNode(nodeP->rightP, &right))))
-			   * resultP = left * right;
+				* resultP = left * right;
 		break;
 
 		case '/':
 			if (!((err |= RecurseExprNode(nodeP->leftP, &left)) || (err |= RecurseExprNode(nodeP->rightP, &right))))
-			   * resultP = left / right;
+				* resultP = left / right;
 		break;
 
 		case '^':
 			if (!MathLibRef)
 				err |= missingFuncError;
 			else if (!((err |= RecurseExprNode(nodeP->leftP, &left)) || (err |= RecurseExprNode(nodeP->rightP, &right))))
-			   * resultP = pow(left, right);
+				* resultP = pow(left, right);
 		break;
 	}
 
@@ -417,7 +421,7 @@ UInt8 RecurseExprNode (ExprNode * nodeP, double * resultP)
 
 /***********************************************************************
  *
- * FUNCTION:    EvalExprTree 
+ * FUNCTION:	EvalExprTree 
  *
  * DESCRIPTION: Evaluates an expression tree.
  *
@@ -438,7 +442,7 @@ UInt8 EvalExprTree (ExprTree * exprT, double * resultP)
 
 /***********************************************************************
  *
- * FUNCTION:    DeleteNodes 
+ * FUNCTION:	DeleteNodes 
  *
  * DESCRIPTION: 
  *
@@ -460,7 +464,7 @@ void DeleteNodes (ExprNode * nodeP)
 
 /***********************************************************************
  *
- * FUNCTION:    Eval
+ * FUNCTION:	Eval
  *
  * DESCRIPTION: 
  *
@@ -534,7 +538,7 @@ CleanUp:
 
 /***********************************************************************
  *
- * FUNCTION:    MakeVarsStringList
+ * FUNCTION:	MakeVarsStringList
  *
  * DESCRIPTION: 
  *
@@ -603,7 +607,7 @@ CleanUp:
 
 /***********************************************************************
  *
- * FUNCTION:    FlpCmpDblToA
+ * FUNCTION:	FlpCmpDblToA
  *
  * DESCRIPTION: 
  *
@@ -616,8 +620,8 @@ CleanUp:
 UInt8 FlpCmpDblToA(FlpCompDouble *f, Char *s)
 {
 	FlpDouble a;
-        UInt32 mantissa;
-        Int32 signedMantissa;
+	UInt32 mantissa;
+	Int32 signedMantissa;
 	Int16 i, exponent, sign;
 	UInt8 err;
 
@@ -632,45 +636,45 @@ UInt8 FlpCmpDblToA(FlpCompDouble *f, Char *s)
 	if (exponent < -8 || exponent > 2)
 		return (UInt8) FlpFToA(f->fd, s);
 
-        signedMantissa = mantissa * (sign ? -1 : 1);
+	signedMantissa = mantissa * (sign ? -1 : 1);
 
-        s ++;
-        s = StrIToA(s, signedMantissa);
-        s --;
-        if (s[1]=='-')
-        {
-			s[0] = '-';
-			s[1] = '0';
-        }
-        else
-			s[0] = ' ';
+	s ++;
+	s = StrIToA(s, signedMantissa);
+	s --;
+	if (s[1]=='-')
+	{
+		s[0] = '-';
+		s[1] = '0';
+	}
+	else
+		s[0] = ' ';
 
 	if (!signedMantissa || !exponent)
 		return (UInt8) 0;
 
-        i = StrLen(s);
+	i = StrLen(s);
 
-        if (exponent < 0)
-        {
-                s[i+1] = nullChr;
-                while (exponent)
-                {
-                       	s[i] = s[i-1];
-                       	i--;
-                       	exponent++;
-                }
-                s[i] = '.';
-        }
-        if (exponent > 0)
-        {
-                while (exponent)
-                {
-                       	s[i] = '0';
-                       	i++;
-                       	exponent--;
-                }
-                s[i] = nullChr;
-        }
+	if (exponent < 0)
+	{
+		s[i+1] = nullChr;
+		while (exponent)
+		{
+		 	s[i] = s[i-1];
+		 	i--;
+		 	exponent++;
+		}
+		s[i] = '.';
+	}
+	if (exponent > 0)
+	{
+		while (exponent)
+		{
+		 	s[i] = '0';
+		 	i++;
+		 	exponent--;
+		}
+		s[i] = nullChr;
+	}
 
 	if (s[1] == '.')
 		s[0] = '0';

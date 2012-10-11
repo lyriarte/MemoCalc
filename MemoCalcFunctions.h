@@ -18,8 +18,8 @@
 typedef double FuncType (double x);
 
 typedef struct FuncRef {
-        Char * name;
-        FuncType * func;
+	Char * name;
+	FuncType * func;
 } FuncRef ;
 
 
