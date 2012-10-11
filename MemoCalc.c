@@ -72,6 +72,7 @@ static MemHandle sMemoH;
 static Char ** sVarsStrTbl;
 static Char * sEditViewTitleStr;
 static Int16 sNVars;
+static UInt16 sEditFieldFocus;
 static UInt8 sEditorSavePolicy;
 static Boolean sVarsOk, sVarsList;
 
@@ -333,7 +334,8 @@ static void MemoCalcUIScroll (FormPtr frmP, Int16 linesToScroll, UInt16 fieldID,
 static void EditViewToggleExprButtons (FormPtr frmP)
 {
 
-	if (FrmGetFocus(frmP) == FrmGetObjectIndex(frmP, ExprField))
+	sEditFieldFocus = FrmGetObjectIndex(frmP, ExprField);
+	if (FrmGetFocus(frmP) == sEditFieldFocus)
 	{
 		FrmShowObject(frmP, FrmGetObjectIndex(frmP, Bpls));
 		FrmShowObject(frmP, FrmGetObjectIndex(frmP, Btim));
@@ -362,7 +364,10 @@ static void EditViewToggleExprButtons (FormPtr frmP)
 			FrmHideObject(frmP, FrmGetObjectIndex(frmP, FunctionsTrigger));
 		}
 		if (FrmGetFocus(frmP) == FrmGetObjectIndex(frmP, VarsField))
+		{
+			sEditFieldFocus = FrmGetObjectIndex(frmP, VarsField);
 			FrmShowObject(frmP, FrmGetObjectIndex(frmP, Bequ));
+		}
 	}
 
 	FrmUpdateForm(EditView, frmRedrawUpdateCode);
@@ -417,7 +422,7 @@ static void EditViewToggleVarsView (FormPtr frmP)
 		FrmHideObject(frmP, FrmGetObjectIndex(frmP, VarsLabel));
 		FrmShowObject(frmP, FrmGetObjectIndex(frmP, VarsList));
 
-		FrmSetFocus(frmP, FrmGetObjectIndex(frmP, ExprField));
+		FrmSetFocus(frmP, (sEditFieldFocus = FrmGetObjectIndex(frmP, ExprField)));
 		CtlSetLabel(varsCtlP, kVarsEditLabel);
 	}
 	else
@@ -458,7 +463,7 @@ static void EditViewToggleVarsView (FormPtr frmP)
 		CtlSetLabel(varsCtlP, kVarsListLabel);
 
 		if (FrmGetFocus(frmP) != FrmGetObjectIndex(frmP, ExprField))
-			FrmSetFocus(frmP, FrmGetObjectIndex(frmP, VarsField));
+			FrmSetFocus(frmP, (sEditFieldFocus = FrmGetObjectIndex(frmP, VarsField)));
 
 		if (valStart < valEnd)
 			FldSetSelection(varsFldP, valStart, valEnd);
@@ -739,7 +744,7 @@ static void EditViewInit (FormPtr frmP)
 	}
 
 	MemoCalcUIUpdateScrollBar(frmP, ExprField, ExprScrollBar);
-	FrmSetFocus(frmP, FrmGetObjectIndex(frmP, ExprField));
+	FrmSetFocus(frmP, (sEditFieldFocus = FrmGetObjectIndex(frmP, ExprField)));
 	EditViewToggleVarsView(frmP);
 }
 
@@ -959,8 +964,10 @@ static Boolean EditViewHandleEvent (EventType * evtP)
 			if (ascii)
 			{
 				frmP = FrmGetActiveForm();
-				if (sVarsList && FrmGetFocus(frmP) != FrmGetObjectIndex(frmP, ExprField))
-					FrmSetFocus(frmP, FrmGetObjectIndex(frmP, ExprField));
+				if (sVarsList)
+					FrmSetFocus(frmP, (sEditFieldFocus = FrmGetObjectIndex(frmP, ExprField)));
+				else
+					FrmSetFocus(frmP, sEditFieldFocus);
 				EvtEnqueueKey(ascii, 0, 0);
 				handled = true;
 			}
@@ -1035,6 +1042,11 @@ static Boolean EditViewHandleEvent (EventType * evtP)
 				case EditViewEditUndoMenu:
 					if ((focus != noFocus) && (fldP = FrmGetObjectPtr(frmP, focus)))
 						FldUndo(fldP);
+					handled = true;
+					break;
+
+				case EditViewEditKeyboardMenu:
+					SysKeyboardDialog(kbdDefault);
 					handled = true;
 					break;
 
