@@ -13,6 +13,8 @@
 #ifndef MEMOCALCPARSER_H
 #define MEMOCALCPARSER_H
 
+// functions
+
 UInt8 Eval (Char * exprStr, Char * varsStr, double * resultP);
 
 #endif // MEMOCALCPARSER_H

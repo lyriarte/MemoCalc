@@ -13,24 +13,42 @@
 #ifndef MEMOCALCLEXER_H
 #define MEMOCALCLEXER_H
 
+// error codes
+
+#define parseError			0x01
+#define missingVarError		0x02
+#define missingFuncError	0x04
+
+// unassigned data masks
+
+#define mValue   			0x01
+#define mVariable			0x10
+#define mFunction			0x20
+
+// data types
+
+#define tNumber   			(mValue)
+#define tVariable			(mVariable | mValue)
+#define tFunction			(mFunction | mValue)
+
 // tokens
+#define tName				(mVariable | mFunction)
 
-#define tInteger		1
-#define tFloat			2
-#define tName			3
-
-// structures
+// types and structures
+typedef union {
+	struct IndexPair {
+		UInt16 iStart;		// start index of token associated value in TokenList expression string
+		UInt16 iEnd;		// end index of token associated value in TokenList expression string
+		UInt32 padding;
+	} indexPair ;
+	FuncRef funcRef ;
+	double value;			// constant or variable value
+} TokenData;
 
 typedef struct TokenCell {
 	struct TokenCell * nextP;	// next token in the list
-	union {
-		struct IndexPair {
-			UInt16 iStart;		// start index of token associated value in TokenList expression string
-			UInt16 iEnd;		// end index of token associated value in TokenList expression string
-			UInt32 padding;
-		} indexPair ;
-		double value;			// constant or variable value
-	} data;
+	TokenData data;
+	UInt8 dataType;				// assigned or unassigned data
 	UInt8 token;				// token defined above or char matched (no associated value)
 } TokenCell;
 

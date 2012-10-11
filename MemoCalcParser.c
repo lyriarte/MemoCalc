@@ -34,13 +34,19 @@ typedef union { double d; double fd; } FlpCompDouble;
 #define StrCopy strcpy
 #define StrLen strlen
 
+UInt16 MathLibRef = 0;
+
 #else
 
 #include <PalmOS.h>
 #include <FloatMgr.h>
+#include "MathLib.h"
+
+extern UInt16 MathLibRef;
 
 #endif
 
+#include "MemoCalcFunctions.h"
 #include "MemoCalcLexer.h"
 #include "MemoCalcParser.h"
 
@@ -50,16 +56,13 @@ typedef union { double d; double fd; } FlpCompDouble;
  *
  ***********************************************************************/
 
-// tokens
-
-#define parseError	0xff
-
 // structures
 
 typedef struct ExprNode {
 	struct ExprNode * leftP;
 	struct ExprNode * rightP;
-	double value;
+	TokenData data;
+	UInt8 dataType;   // value for leaf nodes, funcRef or NULL for '(' nodes
 	UInt8 token;
 } ExprNode;
 
@@ -69,7 +72,7 @@ typedef struct ExprTree {
 } ExprTree;
 
 // functions
-static ExprNode * NewExprNode(ExprNode * leftP, ExprNode * rightP, double value, UInt8 token);
+static ExprNode * NewExprNode(ExprNode * leftP, ExprNode * rightP, double value, UInt8 dataType, UInt8 token);
 
 
 /***********************************************************************
@@ -80,7 +83,7 @@ static ExprNode * NewExprNode(ExprNode * leftP, ExprNode * rightP, double value,
  *	T -> F [epsilon | '*' T | '/' T]
  *	F -> X [epsilon | '^' F]
  *	X -> '-' N | N
- *	N -> number | string | string '(' E ')' | '(' E ')'
+ *	N -> number | name | name '(' E ')' | '(' E ')'
  *
  ***********************************************************************/
 
@@ -96,7 +99,7 @@ static UInt8 ruleE (TokenList * tokL, ExprTree * exprT)
 	ExprNode * nodeP;
 	UInt8 err = 0;
 
-	err = ruleT(tokL, exprT);
+	err |= ruleT(tokL, exprT);
 	if (!tokL->cellP || err)
 		return err;
 
@@ -104,9 +107,9 @@ static UInt8 ruleE (TokenList * tokL, ExprTree * exprT)
 	{
 		case '+' :
 		case '-' :
-			nodeP = NewExprNode(exprT->nodeP, NULL, 0, tokL->cellP->token);
+			nodeP = NewExprNode(exprT->nodeP, NULL, 0, 0, tokL->cellP->token);
 			tokL->cellP = tokL->cellP->nextP;
-			err = ruleE(tokL, exprT);
+			err |= ruleE(tokL, exprT);
 			if (err)
 				break;
 			nodeP->rightP = exprT->nodeP;
@@ -123,7 +126,7 @@ static UInt8 ruleT (TokenList * tokL, ExprTree * exprT)
 	ExprNode * nodeP;
 	UInt8 err = 0;
 
-	err = ruleF(tokL, exprT);
+	err |= ruleF(tokL, exprT);
 	if (!tokL->cellP || err)
 		return err;
 
@@ -131,9 +134,9 @@ static UInt8 ruleT (TokenList * tokL, ExprTree * exprT)
 	{
 		case '*' :
 		case '/' :
-			nodeP = NewExprNode(exprT->nodeP, NULL, 0, tokL->cellP->token);
+			nodeP = NewExprNode(exprT->nodeP, NULL, 0, 0, tokL->cellP->token);
 			tokL->cellP = tokL->cellP->nextP;
-			err = ruleT(tokL, exprT);
+			err |= ruleT(tokL, exprT);
 			if (err)
 				break;
 			nodeP->rightP = exprT->nodeP;
@@ -150,16 +153,16 @@ static UInt8 ruleF (TokenList * tokL, ExprTree * exprT)
 	ExprNode * nodeP;
 	UInt8 err = 0;
 
-	err = ruleX(tokL, exprT);
+	err |= ruleX(tokL, exprT);
 	if (!tokL->cellP || err)
 		return err;
 
 	switch (tokL->cellP->token)
 	{
 		case '^' :
-			nodeP = NewExprNode(exprT->nodeP, NULL, 0, tokL->cellP->token);
+			nodeP = NewExprNode(exprT->nodeP, NULL, 0, 0, tokL->cellP->token);
 			tokL->cellP = tokL->cellP->nextP;
-			err = ruleF(tokL, exprT);
+			err |= ruleF(tokL, exprT);
 			if (err)
 				break;
 			nodeP->rightP = exprT->nodeP;
@@ -185,23 +188,24 @@ static UInt8 ruleX (TokenList * tokL, ExprTree * exprT)
 		case '-' :
 			// replace "- foo" by "(0 - foo)"
 			tokL->cellP = tokL->cellP->nextP;
-			node0 = NewExprNode(NULL, NULL, 0, tInteger);
+			node0 = NewExprNode(NULL, NULL, 0, tNumber, tNumber);
 		break;
 	}
 
-	err = ruleN(tokL, exprT);
+	err |= ruleN(tokL, exprT);
 	if (node0 && !err)
 	{
-		nodeP = NewExprNode(node0, exprT->nodeP, 0, '-');
-		exprT->nodeP = NewExprNode(nodeP, NULL, 0, '(');
+		nodeP = NewExprNode(node0, exprT->nodeP, 0, 0, '-');
+		exprT->nodeP = NewExprNode(nodeP, NULL, 0, 0, '(');
 	}
 
 	return err;
 }
 
-// N -> number | string | string '(' E ')' | '(' E ')'
+// N -> number | name | name '(' E ')' | '(' E ')'
 static UInt8 ruleN (TokenList * tokL, ExprTree * exprT)
 {	
+	TokenCell * funcCell = NULL;
 	UInt8 err = 0;
 
 	if (!tokL->cellP)
@@ -209,34 +213,44 @@ static UInt8 ruleN (TokenList * tokL, ExprTree * exprT)
 
 	switch (tokL->cellP->token)
 	{
-		case tInteger :
-		case tFloat :
-			exprT->nodeP = NewExprNode(NULL, NULL, tokL->cellP->data.value, tokL->cellP->token);
+		case tNumber :
+			exprT->nodeP = NewExprNode(NULL, NULL, tokL->cellP->data.value, tNumber, tNumber);
 			tokL->cellP = tokL->cellP->nextP;
 		break;
 
 		case tName :
-			exprT->nodeP = NewExprNode(NULL, NULL, tokL->cellP->data.value, tokL->cellP->token);
-			tokL->cellP = tokL->cellP->nextP;
-			if (!tokL->cellP || tokL->cellP->token != '(')
+			if (tokL->cellP->dataType & mVariable)
+			{
+				exprT->nodeP = NewExprNode(NULL, NULL, tokL->cellP->data.value, tokL->cellP->dataType, tokL->cellP->token);
+				tokL->cellP = tokL->cellP->nextP;
 				break;
-			// #### handle function call here
-
+			}
+			if (tokL->cellP->dataType & mFunction)
+			{
+				funcCell = tokL->cellP;
+				tokL->cellP = tokL->cellP->nextP;
+			}
+			// add function dataType to the '(' exprNode
 		case '(' :
 			tokL->cellP = tokL->cellP->nextP;
-			err = ruleE(tokL, exprT);
+			err |= ruleE(tokL, exprT);
 			if (err)
 				break;
-			exprT->nodeP = NewExprNode(exprT->nodeP, NULL, 0, '(');
+			exprT->nodeP = NewExprNode(exprT->nodeP, NULL, 0, 0, '(');
+			if (funcCell)
+			{
+          			exprT->nodeP->data.funcRef = funcCell->data.funcRef;
+          			exprT->nodeP->dataType = funcCell->dataType;
+			}
 			if (tokL->cellP && tokL->cellP->token == ')')
 				tokL->cellP = tokL->cellP->nextP;
 			else
-				err = parseError;
+				err |= parseError;
 
 		break;
 
 		default :
-			err = parseError;
+			err |= parseError;
 	}
 
 	return err;
@@ -255,13 +269,14 @@ static UInt8 ruleN (TokenList * tokL, ExprTree * exprT)
  *
  ***********************************************************************/
 
-static ExprNode * NewExprNode(ExprNode * leftP, ExprNode * rightP, double value, UInt8 token)
+static ExprNode * NewExprNode(ExprNode * leftP, ExprNode * rightP, double value, UInt8 dataType, UInt8 token)
 {
 	ExprNode * nodeP;
 	nodeP = MemPtrNew(sizeof(ExprNode));
 	nodeP->leftP = leftP;
 	nodeP->rightP = rightP;
-	nodeP->value = value;
+	nodeP->data.value = value;
+	nodeP->dataType = dataType;
 	nodeP->token = token;
 	return nodeP;
 }
@@ -345,15 +360,11 @@ UInt8 MakeNegativeOperatorsLeftRecursive (ExprTree * exprT)
 
 UInt8 BuildExprTree (TokenList * tokL, ExprTree * exprT)
 {
-	UInt8 err;
+	UInt8 err = 0;
 
-	err = ruleE(tokL, exprT);
+	err |= ruleE(tokL, exprT);
 	exprT->rootP = exprT->nodeP;
-	if (err)
-		return err;
-
-	exprT->rootP = exprT->nodeP;
-	err = MakeNegativeOperatorsLeftRecursive(exprT);
+	err |= MakeNegativeOperatorsLeftRecursive(exprT);
 	return err;
 }
 
@@ -370,33 +381,64 @@ UInt8 BuildExprTree (TokenList * tokL, ExprTree * exprT)
  *
  ***********************************************************************/
 
-double RecurseExprNode (ExprNode * nodeP)
+UInt8 RecurseExprNode (ExprNode * nodeP, double * resultP)
 {
+	double left, right;
+	UInt8 err = 0;
+
 	switch (nodeP->token)
 	{
-		case tInteger:
-		case tFloat:
+		case tNumber:
+			* resultP = nodeP->data.value;
+		break;
+
 		case tName:
-			return nodeP->value;
+			if (nodeP->dataType == tVariable)
+			   * resultP = nodeP->data.value;
+			else
+			    err |= missingVarError;
 		break;
 
 		case '(':
-			return RecurseExprNode(nodeP->leftP);
+			if (!(err |= RecurseExprNode(nodeP->leftP, resultP))
+			&& nodeP->dataType & mFunction)
+			{
+				if (nodeP->dataType == tFunction)
+					* resultP = nodeP->data.funcRef.func(* resultP);
+				else
+					err |= missingFuncError;
+			}
+		break;
 
 		case '+':
-			return RecurseExprNode(nodeP->leftP) + RecurseExprNode(nodeP->rightP);
+			if (!((err |= RecurseExprNode(nodeP->leftP, &left)) || (err |= RecurseExprNode(nodeP->rightP, &right))))
+			   * resultP = left + right;
+		break;
 
 		case '-':
-			return RecurseExprNode(nodeP->leftP) - RecurseExprNode(nodeP->rightP);
+			if (!((err |= RecurseExprNode(nodeP->leftP, &left)) || (err |= RecurseExprNode(nodeP->rightP, &right))))
+			   * resultP = left - right;
+		break;
 
 		case '*':
-			return RecurseExprNode(nodeP->leftP) * RecurseExprNode(nodeP->rightP);
+			if (!((err |= RecurseExprNode(nodeP->leftP, &left)) || (err |= RecurseExprNode(nodeP->rightP, &right))))
+			   * resultP = left * right;
+		break;
 
 		case '/':
-			return RecurseExprNode(nodeP->leftP) / RecurseExprNode(nodeP->rightP);
+			if (!((err |= RecurseExprNode(nodeP->leftP, &left)) || (err |= RecurseExprNode(nodeP->rightP, &right))))
+			   * resultP = left / right;
+		break;
+
+		case '^':
+			if (!MathLibRef)
+				err |= missingFuncError;
+			else if (!((err |= RecurseExprNode(nodeP->leftP, &left)) || (err |= RecurseExprNode(nodeP->rightP, &right))))
+			   * resultP = pow(left, right);
+		break;
 	}
-	
-	return 0;
+
+	return err;
 }
 
 
@@ -417,8 +459,7 @@ UInt8 EvalExprTree (ExprTree * exprT, double * resultP)
 	if (!exprT->rootP)
 		return parseError;
 
-	*resultP = RecurseExprNode(exprT->rootP);
-	return 0;
+	return RecurseExprNode(exprT->rootP, resultP);
 }
 
 
@@ -478,19 +519,19 @@ UInt8 Eval (Char * exprStr, Char * varsStr, double * resultP)
 		StrCopy(varL.varsStr, varsStr);
 	}
 
-	err = ParseVariables(&varL);
+	err |= ParseVariables(&varL);
 	if (err)
 		goto CleanUp;
-	err = TokenizeExpression(&tokL);
+	err |= TokenizeExpression(&tokL);
 	if (err)
 		goto CleanUp;
-	err = AssignTokenValue(&tokL, &varL);
+	err |= AssignTokenValue(&tokL, &varL);
 	if (err)
 		goto CleanUp;
-	err = BuildExprTree(&tokL, &exprT);
+	err |= BuildExprTree(&tokL, &exprT);
 	if (err)
 		goto CleanUp;
-	err = EvalExprTree(&exprT, resultP);
+	err |= EvalExprTree(&exprT, resultP);
 
 
 CleanUp:
@@ -526,17 +567,17 @@ void main()
 	TokenList tokL = { NULL, NULL, NULL } ;
 	VarList varL = { NULL, NULL, NULL} ;
 	ExprTree exprT = {NULL, NULL} ;
-	UInt8 err;
+	UInt8 err = 0;
 	double result;
 
-	tokL.exprStr = strdup( "toto * 40 - pipo - 50");
+	tokL.exprStr = strdup( "toto * 40 - sin(pipo - 50)");
 	varL.varsStr = strdup("toto = 6.25 pipo = 100");
 
-	err = ParseVariables(&varL);
-	err = TokenizeExpression(&tokL);
-	err = AssignTokenValue(&tokL, &varL);
-	err = BuildExprTree(&tokL, &exprT);
-	err = EvalExprTree(&exprT, &result);
+	err |= ParseVariables(&varL);
+	err |= TokenizeExpression(&tokL);
+	err |= AssignTokenValue(&tokL, &varL);
+	err |= BuildExprTree(&tokL, &exprT);
+	err |= EvalExprTree(&exprT, &result);
 }
 
 #endif

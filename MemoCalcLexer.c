@@ -33,6 +33,8 @@ typedef union { double d; double fd; } FlpCompDouble;
 #define StrCopy strcpy
 #define StrLen strlen
 
+UInt8 GetFunc (void * funcRefP, Char * funcName, UInt16 len) { return 1;}
+
 #else
 
 #include <PalmOS.h>
@@ -40,6 +42,8 @@ typedef union { double d; double fd; } FlpCompDouble;
 
 #endif
 
+
+#include "MemoCalcFunctions.h"
 #include "MemoCalcLexer.h"
 
 
@@ -116,6 +120,8 @@ static UInt8 GetNextState (UInt8 q, Char c)
 		break;
 
 		case qName:
+			if (isNumber(c)) 
+				return qName;
 			if (isLetter(c)) 
 				return qName;
 			if (isOpen(c)) 
@@ -215,10 +221,8 @@ UInt8 TokenizeExpression (TokenList * tokL)
 			switch (lastState)
 			{
 				case qInteger:
-					exprP->token = tInteger;
-				break;
 				case qFloat:
-					exprP->token = tFloat;
+					exprP->token = tNumber;
 				break;
 				case qName:
 					exprP->token = tName;
@@ -364,9 +368,11 @@ UInt8 ParseVariables (VarList * varL)
  *
  * FUNCTION:    AssignTokenValue 
  *
- * DESCRIPTION: Assign a value for numeric tokens, or names corresponding
- *		to a variable. If a name doesn't exist in var list, it is assumed
- *		to be a function name.
+ * DESCRIPTION: Assign a value for numeric tokens, names corresponding
+ *		to a variable, or a function.
+ *		Replaces state automata tokens with token types.
+ *
+ * NOTE: The expr string has to be in write access.
  *
  * PARAMETERS:  token list, variables list.
  *
@@ -376,16 +382,17 @@ UInt8 ParseVariables (VarList * varL)
 
 UInt8 AssignTokenValue (TokenList * tokL, VarList * varL)
 {
-	Char tmpC;
 	FlpCompDouble tmpF;
+	UInt8 err = 0;
+	Char tmpC;
 
 	tokL->cellP = tokL->headP;
 	while (tokL->cellP)
 	{
 		switch (tokL->cellP->token)
 		{
-			case tInteger:
-			case tFloat:
+			case tNumber:
+				tokL->cellP->dataType = tNumber;
 				tmpC = tokL->exprStr[tokL->cellP->data.indexPair.iEnd+1];
 				tokL->exprStr[tokL->cellP->data.indexPair.iEnd+1] = 0;
 				FlpBufferAToF(&(tmpF.fd), tokL->exprStr + tokL->cellP->data.indexPair.iStart);
@@ -394,16 +401,34 @@ UInt8 AssignTokenValue (TokenList * tokL, VarList * varL)
 			break;
 
 			case tName:
-				varL->cellP = varL->headP;
-				while (varL->cellP)
-				{
-					if (StrNCompare(varL->cellP->name, tokL->exprStr + tokL->cellP->data.indexPair.iStart,
-						1 + tokL->cellP->data.indexPair.iEnd - tokL->cellP->data.indexPair.iStart) == 0)
-					{
-						tokL->cellP->data.value = varL->cellP->value;
-						break;
-					}
-					varL->cellP = varL->cellP->nextP;
+			    if (tokL->cellP->nextP && tokL->cellP->nextP->token == '(')
+			    {
+           			tokL->cellP->dataType = mFunction;
+        			if (GetFunc(&(tokL->cellP->data.funcRef), tokL->exprStr + tokL->cellP->data.indexPair.iStart,
+        				1 + tokL->cellP->data.indexPair.iEnd - tokL->cellP->data.indexPair.iStart) == 0)
+                    {
+                        tokL->cellP->dataType |= mValue;
+                    }	
+					else
+						err |= missingFuncError;
+			    }
+                else
+                {
+           			tokL->cellP->dataType = mVariable;
+        			varL->cellP = varL->headP;
+        			while (varL->cellP)
+        			{
+        				if (StrNCompare(varL->cellP->name, tokL->exprStr + tokL->cellP->data.indexPair.iStart,
+        					1 + tokL->cellP->data.indexPair.iEnd - tokL->cellP->data.indexPair.iStart) == 0)
+        				{
+        					tokL->cellP->data.value = varL->cellP->value;
+                          			tokL->cellP->dataType |= mValue;
+       					break;
+        				}
+        				varL->cellP = varL->cellP->nextP;
+        			}
+					if (!(tokL->cellP->dataType & mValue))
+						err |= missingVarError;
 				}
 			break;
 		}
@@ -411,6 +436,6 @@ UInt8 AssignTokenValue (TokenList * tokL, VarList * varL)
 	}
 
 	tokL->cellP = tokL->headP;
-	return 0;
+	return err;
 }
 

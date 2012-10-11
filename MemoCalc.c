@@ -16,7 +16,9 @@
 #include <FloatMgr.h>
 #include <TraceMgr.h>
 
+#include "MathLib.h"
 #include "MemoCalc.h"
+#include "MemoCalcFunctions.h"
 #include "MemoCalcLexer.h"
 #include "MemoCalcParser.h"
 
@@ -44,6 +46,9 @@
  *
  ***********************************************************************/
 
+/* **** **** MathLib **** **** */
+extern UInt16 MathLibRef;
+
 /* **** **** Memo DB **** **** */
 static DmOpenRef sMemoDB;
 static UInt16 sMemoCalcCategory;
@@ -59,6 +64,64 @@ static MemHandle sMemoH;
  *	Internal Functions
  *
  ***********************************************************************/
+
+
+/***********************************************************************
+ *
+ * FUNCTION:    MemoCalcMathLibOpen
+ *
+ * DESCRIPTION: 
+ *
+ * PARAMETERS:  
+ *
+ * RETURNED:    
+ *
+ ***********************************************************************/
+
+static UInt16 MemoCalcMathLibOpen (void)
+{
+	UInt16 err = errNone;
+
+	err = SysLibLoad(sysFileTLibrary, MathLibCreator, &MathLibRef);
+	if (err)
+	{
+		MathLibRef = NULL;
+		goto Exit;
+	}
+	err = MathLibOpen(MathLibRef, MathLibVersion);
+	ErrFatalDisplayIf(err, "Can't open MathLib"); 
+Exit:
+TraceOutput(TL(appErrorClass, "MemoCalcMathLibOpen err %x", err));
+	return err;
+}
+
+
+/***********************************************************************
+ *
+ * FUNCTION:    MemoCalcMathLibClose
+ *
+ * DESCRIPTION: 
+ *
+ * PARAMETERS:  
+ *
+ * RETURNED:    
+ *
+ ***********************************************************************/
+
+static UInt16 MemoCalcMathLibClose (void)
+{
+	UInt16 usecount;
+	UInt16 err = errNone;
+
+	if (!MathLibRef)
+		goto Exit;
+	err = MathLibClose(MathLibRef, &usecount);
+	ErrFatalDisplayIf(err, "Can't close MathLib");
+	if (usecount == 0)
+		SysLibRemove(MathLibRef); 
+Exit:
+	return err;
+}
 
 
 /***********************************************************************
@@ -128,10 +191,12 @@ static UInt16 MemoCalcDBClose (DmOpenRef *dbPP)
 static UInt16 StartApplication (void)
 {
 	UInt16 err;
+	MathLibRef = NULL;
 	sMemoDB = NULL;
 	sMemoCalcCategory = dmAllCategories;
 	sCurrentRecIndex = dmMaxRecordIndex;
 	sTopVisibleRecIndex = 0;
+	MemoCalcMathLibOpen();
 	err = MemoCalcDBOpen(&sMemoDB, &sMemoCalcCategory);
 
 TraceOutput(TL(appErrorClass, "StartApplication DB %lx category %d err %x", sMemoDB, sMemoCalcCategory, err));
@@ -157,6 +222,7 @@ static UInt16 StopApplication (void)
 	UInt16 err;
 	FrmCloseAllForms();
 	err = MemoCalcDBClose(&sMemoDB);
+	MemoCalcMathLibClose();
 	return err;
 }
 
