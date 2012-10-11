@@ -18,6 +18,7 @@
 #define parseError			0x01
 #define missingVarError		0x02
 #define missingFuncError	0x04
+#define mathError			0x08
 
 // unassigned data masks
 

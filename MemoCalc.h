@@ -9,7 +9,7 @@
 #define ListView 6
 #define NewButton 8
 #define MemoCalc 9
-#define AppVersion 10
+#define AppVersion 1000
 #define ExprTable 11
 #define UpButton 12
 #define DownButton 13

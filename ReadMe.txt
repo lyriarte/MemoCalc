@@ -1,4 +1,4 @@
-MemoCalc v0.7
+MemoCalc v0.8
 
 - Lexer and Parser functional. Uses MathLib. Evaluation with +-*/ operators only if MathLib not present.
 - UI with variables and functions lists, memo editor, FlpCompDblToA. Saves last memo index in a feature.
@@ -6,3 +6,4 @@ MemoCalc v0.7
 - Added a scrollbar for the MemoEdit view. Use DmDeleteRecord instead of DmRemoveRecord. Save last memo uniqueID instead of index. Enable PgUp PgDown in edit view.
 - Code formatting, bugfixes. Fix evaluation of expressions like "a-b-c-d". Fix fatal alert at "Quit and discard changes".
 - Removed checks on form focus, which failed on Treo600. Add a "Keyboard" menu in the edit view.
+- Changed application name from "Memo Calc" to "MemoCalc" to avoid confusion when installed from a card reader. DELETE THE PREVIOUS VERSION BEFORE INSTALLING THIS ONE. Changed version string resource ID to 1000 so it actually shows up in Launcher. Fixed error management for calulation error, division by zero, sqrt negative etc...

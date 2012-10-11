@@ -27,7 +27,7 @@ MemoCalcParser.o:	MemoCalcParser.c MemoCalcParser.h
 	m68k-palmos-gcc -fno-builtin -o MemoCalcParser.o -I/m68k-palmos/include -c MemoCalcParser.c
 
 MemoCalc.prc:	MemoCalc bin.res
-	build-prc MemoCalc.prc 'Memo Calc' MeCa *.bin *.grc
+	build-prc MemoCalc.prc 'MemoCalc' MeCa *.bin *.grc
 
 MemoCalc:	MemoCalc.o MemoCalcLexer.o MemoCalcParser.o MathLib.o MemoCalcFunctions.o
 	rm -f *.grc

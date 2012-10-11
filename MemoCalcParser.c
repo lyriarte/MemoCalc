@@ -415,7 +415,9 @@ UInt8 RecurseExprNode (ExprNode * nodeP, double * resultP)
 		break;
 	}
 
-	return err;
+	if (isnan(* resultP) || isinf(* resultP))
+		err |= mathError;
+	return err ;
 }
 
 
