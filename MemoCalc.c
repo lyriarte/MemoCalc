@@ -10,7 +10,7 @@
  *
  ***********************************************************************/
 
-#define TRACE_OUTPUT TRACE_OUTPUT_ON
+
 
 #include <PalmOS.h>
 #include <FloatMgr.h>
@@ -48,6 +48,13 @@
 #define editorDiscardMemo			2
 #define editorSaveEmptyMemo			3
 
+#define resultBaseDecimal			0
+#define resultBaseHexadecimal		1
+
+#define kMemoHeaderSize				20
+#define kMemoHeaderStr				"MemoCalc XXXXXX\n"
+#define kMemoHeaderFormat			"MemoCalc %06d\n"
+
 /***********************************************************************
  *
  *	Global variables
@@ -74,7 +81,9 @@ static Char * sEditViewTitleStr;
 static Int16 sNVars;
 static UInt16 sEditFieldFocus;
 static UInt8 sEditorSavePolicy;
+static UInt8 sEditorResultBase;
 static Boolean sVarsOk, sVarsList;
+static Char sMemoHeaderBuf[kMemoHeaderSize];
 
 /***********************************************************************
  *
@@ -493,7 +502,7 @@ static void EditViewEval (FormPtr frmP)
 	FieldPtr exprFldP, varsFldP, resultFldP;
 	Char * exprStr, * varsStr;
 	FlpCompDouble result;
-	UInt8 err;
+	UInt8 err = 0;
 
 	exprFldP = FrmGetObjectPtr(frmP, FrmGetObjectIndex(frmP, ExprField));
 	varsFldP = FrmGetObjectPtr(frmP, FrmGetObjectIndex(frmP, VarsField));
@@ -502,13 +511,26 @@ static void EditViewEval (FormPtr frmP)
 	exprStr = FldGetTextPtr(exprFldP);
 	varsStr = FldGetTextPtr(varsFldP);
 
-	err = Eval(exprStr, varsStr, &(result.d));
+	if (exprStr == NULL || *exprStr == '\0')
+		result.d = 0;
+	else
+		err = Eval(exprStr, varsStr, &(result.d));
 	sVarsOk = !(err & missingVarError);
 
 	if (err)
 		StrCopy(resultBuf, kErrorStr);
-	else
-		FlpCmpDblToA(&result, resultBuf);
+	else {
+		switch (sEditorResultBase) {
+			case resultBaseDecimal:
+				FlpCmpDblToA(&result, resultBuf);
+			break;
+			case resultBaseHexadecimal:
+				StrPrintF(resultBuf,"0x%08lx",(long)result.d);
+			break;
+			default:
+				StrCopy(resultBuf, kErrorStr);
+		}
+	}
 
 	FldSetTextPtr(resultFldP, resultBuf);
 	FrmUpdateForm(EditView, frmRedrawUpdateCode);
@@ -534,9 +556,11 @@ static void EditViewSave (FormPtr frmP)
 	FieldPtr exprFldP, varsFldP;
 	UInt32 ftr;
 	UInt16 memoLen, exprLen, varsLen, titleLen, attr;
+	Boolean defaultTitle;
 
 	memoLen = exprLen = varsLen = titleLen = 0;
 	memoStr = exprStr = varsStr = tmpStr = NULL;
+	defaultTitle = 0;
 
 	if (sEditViewTitleStr)
 	{
@@ -591,7 +615,17 @@ static void EditViewSave (FormPtr frmP)
 	}
 	else
 	{
-		sMemoH = DmNewRecord(sMemoDB, &sCurrentRecIndex, memoLen + 1 );
+		if (titleLen == 0) {
+			memoLen += titleLen = StrLen(kMemoHeaderStr);
+			sMemoH = DmNewRecord(sMemoDB, &sCurrentRecIndex, memoLen + 1 );
+			memoStr = (Char*) MemHandleLock(sMemoH);
+			StrPrintF(sMemoHeaderBuf,kMemoHeaderFormat, sCurrentRecIndex);
+			DmWrite(memoStr, 0, sMemoHeaderBuf, titleLen);
+			MemHandleUnlock(sMemoH);
+			defaultTitle = 1;
+		}
+		else
+			sMemoH = DmNewRecord(sMemoDB, &sCurrentRecIndex, memoLen + 1 );
 		if (sMemoCalcCategory != dmAllCategories)
 		{
 			DmRecordInfo(sMemoDB, sCurrentRecIndex, &attr, NULL, NULL);
@@ -629,13 +663,13 @@ Cleanup:
 	}
 	if (sCurrentRecIndex == dmMaxRecordIndex
 	||	DmRecordInfo(sMemoDB, sCurrentRecIndex, NULL, &ftr, NULL))
-		ftr = (UInt32)sCurrentRecIndex = dmMaxRecordIndex;
+		ftr = (UInt32)(sCurrentRecIndex = dmMaxRecordIndex);
 	FtrSet(sysFileCMemoCalc, memoCalcCurrRecFtrNum, ftr);
 	if (sCurrentRecIndex != dmMaxRecordIndex)
 	{
 		DmReleaseRecord(sMemoDB, sCurrentRecIndex, true);
 		if (sEditorSavePolicy == editorDeleteMemo 
-		|| (sEditorSavePolicy == editorSaveMemo && (exprLen + varsLen + titleLen == 0)))
+		|| (sEditorSavePolicy == editorSaveMemo && (exprLen + varsLen == 0) && (titleLen == 0 || defaultTitle)))
 		{
 			DmDeleteRecord(sMemoDB, sCurrentRecIndex);
 			DmMoveRecord(sMemoDB, sCurrentRecIndex, DmNumRecords(sMemoDB));
@@ -697,6 +731,7 @@ static void EditViewInit (FormPtr frmP)
 	sEditViewTitleStr = NULL;
 	sNVars = 0;
 	sEditorSavePolicy = editorSaveMemo;
+	sEditorResultBase = resultBaseDecimal;
 	sVarsList = sVarsOk = true;
 
 	if (sCurrentRecIndex != dmMaxRecordIndex)
@@ -1057,6 +1092,21 @@ static Boolean EditViewHandleEvent (EventType * evtP)
 					FrmDeleteForm(frmP);
 					handled = true;
 				break;
+
+				case EditViewOptionsHexMenu:
+					sEditorResultBase = resultBaseHexadecimal;
+					frmP = FrmGetActiveForm();
+					EditViewEval(frmP);
+					handled = true;
+					break;
+
+				case EditViewOptionsDecMenu:
+					sEditorResultBase = resultBaseDecimal;
+					frmP = FrmGetActiveForm();
+					EditViewEval(frmP);
+					handled = true;
+					break;
+
 			}
 		break;
 	}
@@ -1085,7 +1135,8 @@ static void ListViewDrawRecord (void * tblP, Int16 row, Int16 col, RectanglePtr 
 
 	recIndex = TblGetRowID(tblP, row);
 
-	memoH = DmQueryRecord(sMemoDB, recIndex);
+	if ((memoH = DmQueryRecord(sMemoDB, recIndex)) == NULL)
+		return;
 	memoP = MemHandleLock(memoH);
 	tmpP = StrChr (memoP, linefeedChr);
 	if (tmpP)
@@ -1241,6 +1292,8 @@ static void ListViewInit (FormPtr frmP)
 
 	tblP = FrmGetObjectPtr(frmP, FrmGetObjectIndex(frmP, ExprTable));
 	nRows = TblGetNumberOfRows(tblP);
+	TblSetCustomDrawProcedure (tblP, 0, ListViewDrawRecord);
+	TblSetColumnUsable(tblP, 0, true);
 
 	// Make sure sCurrentRecIndex is between sTopVisibleRecIndex and lastVisibleRecIndex
 	if (sCurrentRecIndex != dmMaxRecordIndex)
@@ -1261,9 +1314,6 @@ static void ListViewInit (FormPtr frmP)
 		TblSetItemStyle(tblP, row, 0, customTableItem);
 	}
 
-	ListViewLoadTable(frmP);
-	TblSetCustomDrawProcedure (tblP, 0, ListViewDrawRecord);
-	TblSetColumnUsable(tblP, 0, true);
 }
 
 
@@ -1291,6 +1341,7 @@ static Boolean ListViewHandleEvent (EventType * evtP)
 			frmP = FrmGetActiveForm();
 			ListViewInit(frmP);
 			FrmDrawForm(frmP);
+	ListViewLoadTable(frmP);
 			handled = true;
 		break;
 

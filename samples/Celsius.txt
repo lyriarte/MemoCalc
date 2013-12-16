@@ -1,0 +1,7 @@
+Conversion Fahrenheit => Celsius 
+
+<--vars--> 
+f=100
+<--expr--> 
+(f-32)/1.8 
+

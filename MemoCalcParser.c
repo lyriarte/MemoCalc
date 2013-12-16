@@ -10,7 +10,6 @@
  *
  ***********************************************************************/
 
-#define TRACE_OUTPUT TRACE_OUTPUT_ON
 
 #include <PalmOS.h>
 #include <FloatMgr.h>
@@ -53,9 +52,9 @@ static ExprNode * NewExprNode(ExprNode * leftP, ExprNode * rightP, double value,
  *	Non terminal LL(1) grammar production rules description
  *
  *	E -> T [epsilon | '+' E | '-' E]
- *	T -> F [epsilon | '*' T | '/' T]
+ *	T -> F [epsilon | '*' T | '/' T | '&' T | '|' T]
  *	F -> X [epsilon | '^' F]
- *	X -> '-' N | N
+ *	X -> '-' N | '~' N | N
  *	N -> number | name | name '(' E ')' | '(' E ')'
  *
  ***********************************************************************/
@@ -107,6 +106,8 @@ static UInt8 ruleT (TokenList * tokL, ExprTree * exprT)
 	{
 		case '*' :
 		case '/' :
+		case '&' :
+		case '|' :
 			nodeP = NewExprNode(exprT->nodeP, NULL, 0, 0, tokL->cellP->token);
 			tokL->cellP = tokL->cellP->nextP;
 			err |= ruleT(tokL, exprT);
@@ -151,13 +152,16 @@ static UInt8 ruleX (TokenList * tokL, ExprTree * exprT)
 {	
 	ExprNode * nodeP , * node0;
 	UInt8 err = 0;
+	Char c;
 
 	if (!tokL->cellP)
 		return parseError;
 
 	nodeP = node0 = NULL ;
-	switch (tokL->cellP->token)
+	c=tokL->cellP->token;
+	switch (c)
 	{
+		case '~' :
 		case '-' :
 			// replace "- foo" by "(0 - foo)"
 			tokL->cellP = tokL->cellP->nextP;
@@ -168,7 +172,7 @@ static UInt8 ruleX (TokenList * tokL, ExprTree * exprT)
 	err |= ruleN(tokL, exprT);
 	if (node0 && !err)
 	{
-		nodeP = NewExprNode(node0, exprT->nodeP, 0, 0, '-');
+		nodeP = NewExprNode(node0, exprT->nodeP, 0, 0, c);
 		exprT->nodeP = NewExprNode(nodeP, NULL, 0, 0, '(');
 	}
 
@@ -407,6 +411,21 @@ UInt8 RecurseExprNode (ExprNode * nodeP, double * resultP)
 				* resultP = left / right;
 		break;
 
+		case '&':
+			if (!((err |= RecurseExprNode(nodeP->leftP, &left)) || (err |= RecurseExprNode(nodeP->rightP, &right))))
+				* resultP = (double) ((Int32)left & (Int32)right);
+		break;
+
+		case '|':
+			if (!((err |= RecurseExprNode(nodeP->leftP, &left)) || (err |= RecurseExprNode(nodeP->rightP, &right))))
+				* resultP = (double) ((Int32)left | (Int32)right);
+		break;
+
+		case '~':
+			if (!(err |= RecurseExprNode(nodeP->rightP, &right)))
+				* resultP = (double) (~(Int32)right);
+		break;
+
 		case '^':
 			if (!MathLibRef)
 				err |= missingFuncError;
@@ -591,7 +610,7 @@ UInt8 MakeVarsStringList (Char * varsStr, Char *** strTblP, Int16 * nStr)
 		tmpF.d = varL.cellP->value;
 		FlpCmpDblToA(&tmpF, (* strTblP)[i] + len + 1);
 		varL.cellP = varL.cellP->nextP;
-		+++i;
+		++i;
 	}
 
 CleanUp:
@@ -621,7 +640,6 @@ CleanUp:
 
 UInt8 FlpCmpDblToA(FlpCompDouble *f, Char *s)
 {
-	FlpDouble a;
 	UInt32 mantissa;
 	Int32 signedMantissa;
 	Int16 i, exponent, sign, len;
@@ -692,11 +710,48 @@ UInt8 FlpCmpDblToA(FlpCompDouble *f, Char *s)
 
 /***********************************************************************
  *
+ * FUNCTION:	AHexToFlpCmpDbl
+ *
+ * DESCRIPTION:
+ *
+ * PARAMETERS:
+ *
+ * RETURNED:	0 if no error
+ *
+ ***********************************************************************/
+
+UInt8 AHexToFlpCmpDbl(FlpCompDouble *f, Char *s)
+{
+	Int32 intValue, exp16;
+	Int16 i;
+	Char tmpC;
+
+	intValue = 0;
+	exp16 = 1;
+
+	i = StrLen(s) - 1;
+
+	while (i >= 0) {
+		if (isNumber(s[i]))
+			intValue += exp16 * (s[i] - '0');
+		else 
+			intValue += exp16 * ( 10 + s[i] - (s[i] < 'a' ? 'A' : 'a'));
+		exp16 *= 16;
+		--i;
+	}
+	f->d = (double) intValue;
+	return 0;
+}
+
+
+/***********************************************************************
+ *
  * FUNCTION:	AToFlpCmpDbl
  *
  * DESCRIPTION: for values over 1 billion, use FlpBufferAToF up to the
  *	billion and multiply the resulting double by 10 for each truncated
  *	digit.
+ *  strings starting with "0x" are passed to AHexToFlpCmpDbl
  *
  * PARAMETERS:
  *
@@ -710,8 +765,14 @@ UInt8 AToFlpCmpDbl(FlpCompDouble *f, Char *s)
 	Char tmpC;
 
 	i = len = StrLen(s);
-	while (i && s[i] != '.')
+	while (i && s[i] != '.') {
+		if (isHexTag(s[i])) {
+		    if (i != 1 || s[0] != '0')
+				return 1;
+			return AHexToFlpCmpDbl(f, &(s[2]));
+  		}
 		--i;
+ 	}
 	if (i)
 		len = i;
 

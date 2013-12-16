@@ -10,7 +10,7 @@
  *
  ***********************************************************************/
 
-#define TRACE_OUTPUT TRACE_OUTPUT_ON
+
 
 #include <PalmOS.h>
 #include <FloatMgr.h>
@@ -28,15 +28,18 @@
 
 // states
 
-#define qStop			0		// parsed string terminator
-#define qStart			1		// initial state
-#define qInteger		2		// parsed an integer
-#define qFloat			3		// parsed a float
-#define qName			4		// parsed a name
-#define qOpen			5		// read an open parenthesis
-#define qClose			6		// read a close parenthesis
-#define qOperator		7		// read an operator
-#define qInvalidState	0xff
+enum {
+	qStop			,	// parsed string terminator
+	qStart			,	// initial state
+	qInteger		,	// parsed an integer
+	qFloat			,	// parsed a float
+	qHex			,	// parsed an hex number
+	qName			,	// parsed a name
+	qOpen			,	// read an open parenthesis
+	qClose			,	// read a close parenthesis
+	qOperator		,	// read an operator
+	qInvalidState
+};
 
 #define dataState(q)		(q >= qInteger && q <= qName)
 #define tokenState(q)		(q >= qOpen && q <= qOperator)
@@ -75,7 +78,18 @@ static UInt8 GetNextState (UInt8 q, Char c)
 		case qInteger:
 			if (isNumber(c)) 
 				return qInteger;
-			if (isDot(c)) 
+			if (isOperator(c))
+				return qOperator;
+			if (isClose(c))
+				return qClose;
+			if (isDot(c))
+				return qFloat;
+			if (isHexTag(c))
+				return qHex;
+		break;
+
+		case qFloat:
+			if (isNumber(c)) 
 				return qFloat;
 			if (isOperator(c)) 
 				return qOperator;
@@ -83,9 +97,9 @@ static UInt8 GetNextState (UInt8 q, Char c)
 				return qClose;
 		break;
 
-		case qFloat:
-			if (isNumber(c)) 
-				return qFloat;
+		case qHex:
+			if (isHexNumber(c))
+				return qHex;
 			if (isOperator(c)) 
 				return qOperator;
 			if (isClose(c)) 
@@ -180,7 +194,7 @@ UInt8 TokenizeExpression (TokenList * tokL)
 
 		// add a new token for lastState if a dataState is completed
 		if (dataState(lastState) && lastState != nextState
-		&& !(lastState == qInteger && nextState == qFloat))
+		&& !(lastState == qInteger && (nextState == qFloat || nextState == qHex)))
 		{
 			exprP = MemPtrNew(sizeof(TokenCell));
 			exprP->nextP = NULL;
@@ -195,6 +209,7 @@ UInt8 TokenizeExpression (TokenList * tokL)
 			{
 				case qInteger:
 				case qFloat:
+				case qHex:
 					exprP->token = tNumber;
 				break;
 				case qName:
@@ -294,8 +309,8 @@ UInt8 ParseVariables (VarList * varL)
 
 		// read a new variable 
 		iStart = iNext;
-		while (isLetter(varL->varsStr[iNext]))
-			iNext++;
+		while (isLetter(varL->varsStr[iNext]) || isNumber(varL->varsStr[iNext]))
+			++iNext;
 		iEnd = iNext;
 		while(isSeparator(varL->varsStr[iNext]))
 			++iNext;
@@ -313,18 +328,24 @@ UInt8 ParseVariables (VarList * varL)
 
 		// read variable value
 		iStart = iNext;
-		if (varL->varsStr[iNext] == '-')
-			++iNext;
-		if (!isNumber(varL->varsStr[iNext]))
-			break;
-		while (isNumber(varL->varsStr[iNext]))
-			iNext++;
-		if (isDot(varL->varsStr[iNext]))
-		{
-			iNext++;
-			while (isNumber(varL->varsStr[iNext]))
-				iNext++;
+		if (varL->varsStr[iNext] == '0' && (varL->varsStr[iNext+1] == 'x' || varL->varsStr[iNext+1] == 'X')) {
+			iNext += 2;
+			while (isHexNumber(varL->varsStr[iNext]))
+				++iNext;
 		}
+		else {
+			if (varL->varsStr[iNext] == '-')
+				++iNext;
+			if (!isNumber(varL->varsStr[iNext]))
+				break;
+			while (isNumber(varL->varsStr[iNext]))
+				++iNext;
+			if (isDot(varL->varsStr[iNext])) {
+				++iNext;
+				while (isNumber(varL->varsStr[iNext]))
+					++iNext;
+			}
+ 		}
 		iEnd = iNext;
 
 		// set a temporary null char to read the number string
@@ -377,7 +398,7 @@ UInt8 AssignTokenValue (TokenList * tokL, VarList * varL)
 				tmpC = tokL->exprStr[tokL->cellP->data.indexPair.iEnd+1];
 				tokL->exprStr[tokL->cellP->data.indexPair.iEnd+1] = 0;
 //				FlpBufferAToF(&(tmpF.fd), tokL->exprStr + tokL->cellP->data.indexPair.iStart);
-				AToFlpCmpDbl(&tmpF, tokL->exprStr + tokL->cellP->data.indexPair.iStart);
+				err |= AToFlpCmpDbl(&tmpF, tokL->exprStr + tokL->cellP->data.indexPair.iStart);
 				tokL->exprStr[tokL->cellP->data.indexPair.iEnd+1] = tmpC;
 				tokL->cellP->data.value = tmpF.d;
 			break;

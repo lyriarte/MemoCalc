@@ -1,4 +1,4 @@
-MemoCalc v1.0
+MemoCalc v1.3
 
 - Lexer and Parser functional. Uses MathLib. Evaluation with +-*/ operators only if MathLib not present.
 - UI with variables and functions lists, memo editor, FlpCompDblToA. Saves last memo index in a feature.
@@ -9,3 +9,7 @@ MemoCalc v1.0
 - Changed application name from "Memo Calc" to "MemoCalc" to avoid confusion when installed from a card reader. DELETE THE PREVIOUS VERSION BEFORE INSTALLING THIS ONE. Changed version string resource ID to 1000 so it actually shows up in Launcher. Fixed error management for calulation error, division by zero, sqrt negative etc...
 - Fixed a bug with 0.8 that caused evaluation to fail when MathLib was not present
 - Fixed large numbers input method (was broken above 1 billion) and numbers printing.
+- Support numbers in variable names, create a default memo identifier
+- Fixed listview form open error on Debug ROM images
+- Support for hexadecimal numbers like "0x7FFF" in expressions, bitwise & | ~ operators, and 32-bit hexadecimal display in the "Options" menu.
+

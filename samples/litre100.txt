@@ -1,0 +1,10 @@
+Conversion mpg => litres/100km 
+<--vars--> 
+mpg=60
+
+
+mile=1609.347 
+gal=3.7854      
+<--expr--> 
+100/(mpg*(mile/1000)/gal) 
+

@@ -1,5 +1,7 @@
 Conversion m / l / kg       
 
+US values converted in metric. Length in metres, volume in litres, weigth in kilograms.
+
 <--vars-->
 mile=1609.347
 in=0.0254

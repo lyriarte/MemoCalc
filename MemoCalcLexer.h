@@ -87,10 +87,15 @@ UInt8 AssignTokenValue (TokenList * tokL, VarList * varL);
 
 #define isNumber(c)		(c >= '0' && c <= '9')
 #define isLetter(c)		((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
+#define isHex(c)		((c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))
+#define isHexNumber(c)	(isNumber(c) || isHex(c))
+#define isHexTag(c)		(c == 'x' || c == 'X')
 #define isDot(c)		(c == '.')
 #define isOpen(c)		(c == '(')
 #define isClose(c)		(c == ')')
-#define isOperator(c)	(c == '+' || c == '-' || c == '*' || c == '/' || c == '^')
+#define isArithmetic(c)	(c == '+' || c == '-' || c == '*' || c == '/' || c == '^')
+#define isBoolean(c)	(c == '&' || c == '|' || c == '~')
+#define isOperator(c)	(isBoolean(c) || isArithmetic(c))
 
 #define isSeparator(c)	(c == ' ' || c == '\t' || c == '\n' || c == 0x0d || c == 0x0a)
 

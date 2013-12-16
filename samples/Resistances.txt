@@ -1,0 +1,15 @@
+Code couleur Resistances
+<--vars-->
+Noir=0
+Marron=1
+Rouge=2
+Orange=3
+Jaune=4
+Vert=5
+Bleu=6
+Violet=7
+Gris=8
+Blanc=9
+Dore=0.05
+Argente=0.1<--expr-->
+(10*Rouge+Rouge)*10^Marron*(1+0)

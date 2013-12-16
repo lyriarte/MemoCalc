@@ -1,0 +1,5 @@
+Conversion Celsius => Fahrenheit 
+
+<--vars--> 
+c=19<--expr--> 
+c*1.8+32 
